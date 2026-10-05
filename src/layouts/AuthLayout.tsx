@@ -8,7 +8,7 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
+    <div className="flex min-h-dvh flex-col lg:flex-row">
       <aside className="relative hidden overflow-hidden bg-primary lg:flex lg:w-1/2 lg:flex-col lg:justify-between lg:p-12">
         <div
           className="absolute inset-0 opacity-20"
@@ -79,7 +79,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         </p>
       </aside>
 
-      <main className="flex flex-1 items-center justify-center bg-background px-4 py-10 sm:px-8">
+      <main className="flex min-h-dvh flex-1 items-start justify-center overflow-y-auto overscroll-contain bg-background px-4 py-8 pb-28 sm:px-8 sm:py-10 lg:items-center lg:pb-10">
         <div className="w-full max-w-md">{children}</div>
       </main>
     </div>

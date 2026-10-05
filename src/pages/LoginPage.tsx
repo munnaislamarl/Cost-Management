@@ -132,6 +132,13 @@ export function LoginPage() {
               placeholder="you@company.com or EMP-0001"
               value={identifier}
               onChange={(event) => setIdentifier(event.target.value)}
+              onFocus={(event) => {
+                const input = event.currentTarget
+                window.setTimeout(
+                  () => input.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+                  300,
+                )
+              }}
               className="pl-9"
               disabled={loading}
             />
@@ -158,6 +165,13 @@ export function LoginPage() {
               placeholder="••••••••"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              onFocus={(event) => {
+                const input = event.currentTarget
+                window.setTimeout(
+                  () => input.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+                  300,
+                )
+              }}
               className="pl-9 pr-10"
               disabled={loading}
             />
