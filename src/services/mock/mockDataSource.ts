@@ -18,7 +18,7 @@ import {
   computeStats,
   monthLabel,
 } from '@/utils/analytics'
-import { generateId, generateRecordId, nowIso } from '@/utils/id'
+import { buildEmployeeId, generateId, generateRecordId, nowIso } from '@/utils/id'
 
 const MOCK_CREDENTIALS: Record<string, { password: string; userId: string }> = {
   'admin@opexhub.com': { password: 'Admin@123', userId: 'USR-0001' },
@@ -212,11 +212,15 @@ export const mockDataSource: DataSource = {
   },
 
   async submitAccessRequest(input) {
+    const existing = [
+      ...mockDb.users.map((item) => item.employeeId),
+      ...mockDb.requests.map((item) => item.employeeId),
+    ]
     const request: AccessRequest = {
       id: generateId('REQ').toUpperCase().replace('_', '-'),
       name: input.name,
       email: input.email,
-      employeeId: input.employeeId,
+      employeeId: buildEmployeeId(input.name, existing),
       department: input.department,
       message: input.message,
       status: 'pending',

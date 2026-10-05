@@ -50,7 +50,6 @@ export interface AccessRequest {
 export interface AccessRequestInput {
   name: string
   email: string
-  employeeId: string
   department: string
   message: string
   password: string

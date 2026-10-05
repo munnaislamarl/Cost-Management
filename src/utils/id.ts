@@ -19,3 +19,25 @@ export function generateId(prefix = 'id'): string {
 export function nowIso(): string {
   return new Date().toISOString()
 }
+
+/**
+ * Builds an employee ID from a person's name, e.g. "Md. Munna Islam" → "MMI-0001".
+ * The numeric suffix is one higher than any existing ID passed in `existingIds`.
+ */
+export function buildEmployeeId(name: string, existingIds: string[]): string {
+  const initials = name
+    .replace(/[^A-Za-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('')
+  const prefix = initials || 'EMP'
+
+  let max = 0
+  for (const id of existingIds) {
+    const match = String(id).match(/(\d+)\s*$/)
+    if (match) max = Math.max(max, parseInt(match[1], 10))
+  }
+  return `${prefix}-${String(max + 1).padStart(4, '0')}`
+}

@@ -886,13 +886,8 @@ function deleteUser(payload) {
 
 function requestAccess(payload) {
   var input = payload.request || {};
-  if (!input.name || !input.email || !input.employeeId || !input.password) {
-    return jsonResponse(
-      false,
-      'Name, email, employee ID and password are required.',
-      null,
-      'VALIDATION'
-    );
+  if (!input.name || !input.email || !input.password) {
+    return jsonResponse(false, 'Name, email and password are required.', null, 'VALIDATION');
   }
 
   var rows = readSheet(SHEET_REQUESTS);
@@ -912,7 +907,7 @@ function requestAccess(payload) {
     ID: id,
     NAME: input.name,
     EMAIL: input.email,
-    EMPLOYEE_ID: input.employeeId,
+    EMPLOYEE_ID: generateEmployeeId(input.name),
     DEPARTMENT: input.department || '',
     MESSAGE: input.message || '',
     STATUS: 'pending',
@@ -925,6 +920,38 @@ function requestAccess(payload) {
   invalidateCache();
   logActivity('create', '', input.name, 'Access requested by ' + input.email);
   return jsonResponse(true, 'Access request submitted.', findRequestById(id));
+}
+
+/**
+ * Builds an employee ID from the person's name, e.g. "Md. Munna Islam" → "MMI-0001".
+ * The number is one higher than any existing ID in Users + Requests.
+ */
+function generateEmployeeId(name) {
+  var initials = String(name || '')
+    .replace(/[^A-Za-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(function (word) {
+      return word;
+    })
+    .slice(0, 3)
+    .map(function (word) {
+      return word.charAt(0).toUpperCase();
+    })
+    .join('');
+  var prefix = initials || 'EMP';
+
+  var max = 0;
+  readSheet(SHEET_USERS)
+    .concat(readSheet(SHEET_REQUESTS))
+    .forEach(function (row) {
+      var match = String(row.EMPLOYEE_ID || '').match(/(\d+)\s*$/);
+      if (match) {
+        var value = parseInt(match[1], 10);
+        if (!isNaN(value) && value > max) max = value;
+      }
+    });
+
+  return prefix + '-' + Utilities.formatString('%04d', max + 1);
 }
 
 function listRequests() {

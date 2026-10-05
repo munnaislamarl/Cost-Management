@@ -53,7 +53,6 @@ export function LoginPage() {
   const [requestForm, setRequestForm] = useState({
     name: '',
     email: '',
-    employeeId: '',
     department: '',
     message: '',
     password: '',
@@ -62,9 +61,9 @@ export function LoginPage() {
   async function handleRequestAccess() {
     if (requestSubmitting) return
     setRequestError(null)
-    const { name, email, employeeId, password } = requestForm
-    if (!name.trim() || !email.trim() || !employeeId.trim() || !password) {
-      setRequestError('Name, email, employee ID and password are required.')
+    const { name, email, password } = requestForm
+    if (!name.trim() || !email.trim() || !password) {
+      setRequestError('Name, email and password are required.')
       return
     }
     setRequestSubmitting(true)
@@ -72,7 +71,6 @@ export function LoginPage() {
       await accessService.submit({
         name: name.trim(),
         email: email.trim(),
-        employeeId: employeeId.trim(),
         department: requestForm.department,
         message: requestForm.message.trim(),
         password,
@@ -82,7 +80,6 @@ export function LoginPage() {
       setRequestForm({
         name: '',
         email: '',
-        employeeId: '',
         department: '',
         message: '',
         password: '',
@@ -294,7 +291,8 @@ export function LoginPage() {
             <DialogTitle>Request access</DialogTitle>
             <DialogDescription>
               Submit your details. An administrator will review and approve your
-              account — then sign in with the email and password you choose here.
+              account — then sign in with the email and password you choose here. Your
+              Employee ID is generated automatically.
             </DialogDescription>
           </DialogHeader>
 
@@ -305,13 +303,13 @@ export function LoginPage() {
           ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="req-name">Full name *</Label>
               <Input
                 id="req-name"
                 value={requestForm.name}
                 onChange={(event) => setRequestForm({ ...requestForm, name: event.target.value })}
-                placeholder="Jane Doe"
+                placeholder="e.g. Md. Munna Islam"
                 disabled={requestSubmitting}
               />
             </div>
@@ -323,18 +321,6 @@ export function LoginPage() {
                 value={requestForm.email}
                 onChange={(event) => setRequestForm({ ...requestForm, email: event.target.value })}
                 placeholder="jane@company.com"
-                disabled={requestSubmitting}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="req-empid">Employee ID *</Label>
-              <Input
-                id="req-empid"
-                value={requestForm.employeeId}
-                onChange={(event) =>
-                  setRequestForm({ ...requestForm, employeeId: event.target.value })
-                }
-                placeholder="EMP-0005"
                 disabled={requestSubmitting}
               />
             </div>
