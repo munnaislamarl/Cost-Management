@@ -40,19 +40,34 @@ export function StatCard({
   const display =
     typeof value === 'string' ? value : isCurrency ? value : formatNumber(value)
 
+  const isText = typeof value === 'string' && value.trim() !== ''
+  const isLongText = isText && String(value).length > 12
+
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      <CardContent className="flex items-start justify-between gap-4 p-5">
-        <div className="min-w-0 space-y-1.5">
-          <p className="truncate text-sm font-medium text-muted-foreground">{title}</p>
-          {loading ? (
-            <Skeleton className="h-7 w-24" />
-          ) : (
-            <p className="truncate text-2xl font-semibold tracking-tight text-foreground">
-              {display}
-            </p>
-          )}
-          <div className="flex items-center gap-2">
+    <Card className={cn('h-full overflow-hidden', className)}>
+      <CardContent className="flex h-full min-h-[104px] items-center justify-between gap-3 p-5">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {title}
+          </p>
+          <div className="mt-1.5">
+            {loading ? (
+              <Skeleton className="h-7 w-24" />
+            ) : (
+              <p
+                className={cn(
+                  'font-semibold tracking-tight text-foreground',
+                  isLongText
+                    ? 'line-clamp-2 text-lg leading-snug'
+                    : 'truncate text-2xl leading-tight',
+                )}
+                title={isText ? String(value) : undefined}
+              >
+                {display}
+              </p>
+            )}
+          </div>
+          <div className="mt-1.5 flex items-center gap-2">
             {typeof trend === 'number' && !loading ? (
               <span
                 className={cn(
@@ -75,7 +90,7 @@ export function StatCard({
         </div>
         <div
           className={cn(
-            'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg',
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
             TONES[tone],
           )}
         >
