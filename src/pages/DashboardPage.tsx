@@ -7,7 +7,7 @@ import {
   RefreshCw,
   TrendingUp,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Area,
@@ -97,6 +97,16 @@ export function DashboardPage() {
   const [filterMonth, setFilterMonth] = useState('')
   const [filterPurpose, setFilterPurpose] = useState('')
   const [filterSearch, setFilterSearch] = useState('')
+  const filterCardRef = useRef<HTMLDivElement>(null)
+
+  function showFilteredEntries(monthKeyValue: string, purposeName: string) {
+    setFilterMonth(monthKeyValue)
+    setFilterPurpose(purposeName)
+    setFilterSearch('')
+    window.setTimeout(() => {
+      filterCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 60)
+  }
 
   const resource = useAsyncResource(() => dashboardService.getDashboard(), [])
 
@@ -286,7 +296,14 @@ export function DashboardPage() {
                   </TableHeader>
                   <TableBody>
                     {(selectedMonth?.purposes ?? []).map((purpose) => (
-                      <TableRow key={purpose.purpose}>
+                      <TableRow
+                        key={purpose.purpose}
+                        onClick={() =>
+                          showFilteredEntries(selectedMonth?.monthKey ?? '', purpose.purpose)
+                        }
+                        className="cursor-pointer transition-colors hover:bg-primary/5"
+                        title="Click to see these entries in Filter Data below"
+                      >
                         <TableCell className="max-w-[220px] truncate font-medium">
                           {purpose.purpose}
                         </TableCell>
@@ -372,7 +389,7 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card ref={filterCardRef} className="scroll-mt-20">
         <CardHeader className="flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <CardTitle>Filter Data</CardTitle>
