@@ -1,6 +1,8 @@
 import { apiRequest } from '@/services/apiClient'
 import type { DataSource } from '@/services/types'
 import type {
+  AccessRequest,
+  AccessRequestInput,
   ActivityLogEntry,
   AppUser,
   CostRecord,
@@ -8,6 +10,7 @@ import type {
   DashboardStats,
   RecordInput,
   ReportData,
+  Role,
   SessionUser,
 } from '@/types'
 
@@ -33,6 +36,15 @@ export const remoteDataSource: DataSource = {
   saveUser: (user: AppUser) => unwrap<AppUser>('saveUser', { user }),
   deleteUser: async (id: string) => {
     await unwrap<{ id: string }>('deleteUser', { id })
+  },
+
+  submitAccessRequest: (input: AccessRequestInput) =>
+    unwrap<AccessRequest>('requestAccess', { request: input }),
+  listAccessRequests: () => unwrap<AccessRequest[]>('listRequests'),
+  approveAccessRequest: (id: string, data: { role: Role; department: string; actor: string }) =>
+    unwrap<AppUser>('approveRequest', { id, ...data }),
+  rejectAccessRequest: async (id: string, actor: string) => {
+    await unwrap<{ id: string }>('rejectRequest', { id, actor })
   },
 
   listActivity: () => unwrap<ActivityLogEntry[]>('listActivity'),

@@ -1,14 +1,17 @@
 import type { DataSource } from '@/services/types'
 import { seedActivity, seedRecords, seedUsers } from '@/services/mock/seed'
 import type {
+  AccessRequest,
   ActivityLogEntry,
   AppUser,
   CostRecord,
   DashboardData,
   DashboardStats,
   ReportData,
+  Role,
   SessionUser,
 } from '@/types'
+import { seedAccessRequests } from '@/services/mock/seed'
 import {
   computeReportData,
   computeRunningTotals,
@@ -30,12 +33,23 @@ class MockDatabase {
   records: CostRecord[]
   users: AppUser[]
   activity: ActivityLogEntry[]
+  requests: AccessRequest[]
+  requestPasswords: Record<string, string>
+  userPasswords: Record<string, string>
   private listeners = new Set<Listener>()
 
   constructor() {
     this.records = seedRecords()
     this.users = seedUsers()
     this.activity = seedActivity()
+    this.requests = seedAccessRequests()
+    this.requestPasswords = { 'REQ-0001': 'Request@123' }
+    this.userPasswords = {
+      'admin@opexhub.com': 'Admin@123',
+      'manager@opexhub.com': 'Manager@123',
+      'data@opexhub.com': 'Data@123',
+      'viewer@opexhub.com': 'Viewer@123',
+    }
   }
 
   subscribe(listener: Listener) {
@@ -197,6 +211,64 @@ export const mockDataSource: DataSource = {
     return delay(undefined, 300).then(() => undefined)
   },
 
+  async submitAccessRequest(input) {
+    const request: AccessRequest = {
+      id: generateId('REQ').toUpperCase().replace('_', '-'),
+      name: input.name,
+      email: input.email,
+      employeeId: input.employeeId,
+      department: input.department,
+      message: input.message,
+      status: 'pending',
+      requestedAt: nowIso(),
+    }
+    mockDb.requests = [request, ...mockDb.requests]
+    mockDb.requestPasswords[request.id] = input.password
+    mockDb.log({ action: 'create', actor: input.name, detail: `Access requested by ${input.email}` })
+    mockDb.emit()
+    return delay(clone(request))
+  },
+
+  async listAccessRequests() {
+    return delay(clone(mockDb.requests), 300)
+  },
+
+  async approveAccessRequest(id, data) {
+    const request = mockDb.requests.find((item) => item.id === id)
+    if (!request) throw new Error(`Request ${id} was not found.`)
+    const user: AppUser = {
+      id: generateId('USR').toUpperCase().replace('_', '-'),
+      name: request.name,
+      email: request.email,
+      employeeId: request.employeeId,
+      role: data.role as Role,
+      department: data.department || request.department,
+      active: true,
+      createdAt: nowIso(),
+    }
+    mockDb.users = [user, ...mockDb.users]
+    const password = mockDb.requestPasswords[id] ?? 'Demo@123'
+    mockDb.userPasswords[user.email.toLowerCase()] = password
+    mockDb.requests = mockDb.requests.map((item) =>
+      item.id === id
+        ? { ...item, status: 'approved', decidedBy: data.actor, decidedAt: nowIso() }
+        : item,
+    )
+    mockDb.log({ action: 'create', actor: data.actor, detail: `Approved access for ${user.email}` })
+    mockDb.emit()
+    return delay(clone(user))
+  },
+
+  async rejectAccessRequest(id, actor) {
+    mockDb.requests = mockDb.requests.map((item) =>
+      item.id === id
+        ? { ...item, status: 'rejected', decidedBy: actor, decidedAt: nowIso() }
+        : item,
+    )
+    mockDb.emit()
+    return delay(undefined, 300).then(() => undefined)
+  },
+
   async listActivity() {
     return delay(clone(mockDb.activity), 300)
   },
@@ -228,7 +300,10 @@ export const mockDataSource: DataSource = {
       (item) => item.email.toLowerCase() === key || item.employeeId.toLowerCase() === key,
     )
 
-    const valid = (byEmail && byEmail.password === password) || (user && password === 'Demo@123')
+    const valid =
+      (byEmail && byEmail.password === password) ||
+      (user && mockDb.userPasswords[user.email.toLowerCase()] === password) ||
+      (user && password === 'Demo@123')
 
     if (!user || !valid) {
       throw new Error('Invalid credentials. Check your email/employee ID and password.')

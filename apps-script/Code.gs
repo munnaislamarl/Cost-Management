@@ -24,6 +24,7 @@
 var SHEET_RECORDS = 'Records';
 var SHEET_USERS = 'Users';
 var SHEET_ACTIVITY = 'Activity';
+var SHEET_REQUESTS = 'Requests';
 
 var RECORD_HEADERS = [
   'ID',
@@ -55,6 +56,21 @@ var USER_HEADERS = [
 ];
 
 var ACTIVITY_HEADERS = ['ID', 'ACTION', 'RECORD_ID', 'ACTOR', 'DETAIL', 'TIMESTAMP'];
+
+var REQUEST_HEADERS = [
+  'ID',
+  'NAME',
+  'EMAIL',
+  'EMPLOYEE_ID',
+  'DEPARTMENT',
+  'MESSAGE',
+  'STATUS',
+  'PASSWORD_HASH',
+  'PASSWORD_SALT',
+  'REQUESTED_AT',
+  'DECIDED_BY',
+  'DECIDED_AT'
+];
 
 var CACHE_RECORDS = 'cm_records_v1';
 var CACHE_USERS = 'cm_users_v1';
@@ -106,6 +122,7 @@ function setup() {
   ensureSheet(ss, SHEET_RECORDS, RECORD_HEADERS);
   ensureSheet(ss, SHEET_USERS, USER_HEADERS);
   ensureSheet(ss, SHEET_ACTIVITY, ACTIVITY_HEADERS);
+  ensureSheet(ss, SHEET_REQUESTS, REQUEST_HEADERS);
   formatMonthColumn();
 
   var users = readSheet(SHEET_USERS);
@@ -475,6 +492,15 @@ function route(action, payload) {
         return saveUser(payload);
       case 'deleteUser':
         return deleteUser(payload);
+
+      case 'requestAccess':
+        return requestAccess(payload);
+      case 'listRequests':
+        return jsonResponse(true, 'Requests loaded.', listRequests());
+      case 'approveRequest':
+        return approveRequest(payload);
+      case 'rejectRequest':
+        return rejectRequest(payload);
 
       case 'listActivity':
         return jsonResponse(true, 'Activity loaded.', listActivity());
@@ -852,6 +878,192 @@ function deleteUser(payload) {
     }
   }
   return jsonResponse(false, 'User not found: ' + id, null, 'NOT_FOUND');
+}
+
+/* ------------------------------------------------------------------ */
+/* Access requests (login page -> admin approval)                     */
+/* ------------------------------------------------------------------ */
+
+function requestAccess(payload) {
+  var input = payload.request || {};
+  if (!input.name || !input.email || !input.employeeId || !input.password) {
+    return jsonResponse(
+      false,
+      'Name, email, employee ID and password are required.',
+      null,
+      'VALIDATION'
+    );
+  }
+
+  var rows = readSheet(SHEET_REQUESTS);
+  var email = String(input.email).toLowerCase();
+  for (var i = 0; i < rows.length; i++) {
+    if (
+      String(rows[i].EMAIL).toLowerCase() === email &&
+      String(rows[i].STATUS).toLowerCase() === 'pending'
+    ) {
+      return jsonResponse(false, 'A request for this email is already pending.', null, 'DUPLICATE');
+    }
+  }
+
+  var id = nextIdByPrefix(SHEET_REQUESTS, 'REQ');
+  var salt = makeSalt();
+  appendObject(SHEET_REQUESTS, REQUEST_HEADERS, {
+    ID: id,
+    NAME: input.name,
+    EMAIL: input.email,
+    EMPLOYEE_ID: input.employeeId,
+    DEPARTMENT: input.department || '',
+    MESSAGE: input.message || '',
+    STATUS: 'pending',
+    PASSWORD_HASH: hashPassword(input.password, salt),
+    PASSWORD_SALT: salt,
+    REQUESTED_AT: new Date().toISOString(),
+    DECIDED_BY: '',
+    DECIDED_AT: ''
+  });
+  invalidateCache();
+  logActivity('create', '', input.name, 'Access requested by ' + input.email);
+  return jsonResponse(true, 'Access request submitted.', findRequestById(id));
+}
+
+function listRequests() {
+  return readSheet(SHEET_REQUESTS)
+    .map(mapRequest)
+    .sort(function (a, b) {
+      return new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime();
+    });
+}
+
+function approveRequest(payload) {
+  var id = String(payload.id || '');
+  var role = String(payload.role || 'data_entry');
+  var department = String(payload.department || '');
+  var actor = String(payload.actor || 'Administrator');
+
+  var rows = readSheet(SHEET_REQUESTS);
+  var raw = null;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].ID) === id) {
+      raw = rows[i];
+      break;
+    }
+  }
+  if (!raw) return jsonResponse(false, 'Request not found: ' + id, null, 'NOT_FOUND');
+
+  var now = new Date().toISOString();
+  var users = readSheet(SHEET_USERS);
+  var existing = null;
+  for (var u = 0; u < users.length; u++) {
+    if (String(users[u].EMAIL).toLowerCase() === String(raw.EMAIL).toLowerCase()) {
+      existing = users[u];
+      break;
+    }
+  }
+
+  if (!existing) {
+    appendObject(SHEET_USERS, USER_HEADERS, {
+      ID: nextIdByPrefix(SHEET_USERS, 'USR'),
+      NAME: raw.NAME,
+      EMAIL: raw.EMAIL,
+      EMPLOYEE_ID: raw.EMPLOYEE_ID,
+      ROLE: role,
+      DEPARTMENT: department || raw.DEPARTMENT || '',
+      ACTIVE: 'TRUE',
+      PASSWORD_HASH: raw.PASSWORD_HASH,
+      PASSWORD_SALT: raw.PASSWORD_SALT,
+      CREATED_AT: now,
+      LAST_LOGIN: ''
+    });
+  }
+
+  updateRowWhere(SHEET_REQUESTS, REQUEST_HEADERS, 'ID', id, {
+    STATUS: 'approved',
+    DECIDED_BY: actor,
+    DECIDED_AT: now
+  });
+  invalidateCache();
+  logActivity('create', '', actor, 'Approved access for ' + raw.EMAIL);
+
+  var created = findUserByEmail(raw.EMAIL);
+  return jsonResponse(
+    true,
+    existing
+      ? 'A user with this email already exists; request marked approved.'
+      : 'Access approved. The user can now sign in.',
+    created
+  );
+}
+
+function rejectRequest(payload) {
+  var id = String(payload.id || '');
+  var actor = String(payload.actor || 'Administrator');
+  var updated = updateRowWhere(SHEET_REQUESTS, REQUEST_HEADERS, 'ID', id, {
+    STATUS: 'rejected',
+    DECIDED_BY: actor,
+    DECIDED_AT: new Date().toISOString()
+  });
+  if (!updated) return jsonResponse(false, 'Request not found: ' + id, null, 'NOT_FOUND');
+  invalidateCache();
+  return jsonResponse(true, 'Request rejected.', { id: id });
+}
+
+function mapRequest(row) {
+  return {
+    id: row.ID,
+    name: row.NAME,
+    email: row.EMAIL,
+    employeeId: row.EMPLOYEE_ID,
+    department: row.DEPARTMENT,
+    message: row.MESSAGE,
+    status: String(row.STATUS || 'pending').toLowerCase(),
+    requestedAt: toIso(row.REQUESTED_AT),
+    decidedBy: row.DECIDED_BY || undefined,
+    decidedAt: row.DECIDED_AT ? toIso(row.DECIDED_AT) : undefined
+  };
+}
+
+function findRequestById(id) {
+  var rows = readSheet(SHEET_REQUESTS);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].ID) === id) return mapRequest(rows[i]);
+  }
+  return null;
+}
+
+function findUserByEmail(email) {
+  var target = String(email).toLowerCase();
+  var rows = readSheet(SHEET_USERS);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].EMAIL).toLowerCase() === target) {
+      return {
+        id: rows[i].ID,
+        name: rows[i].NAME,
+        email: rows[i].EMAIL,
+        employeeId: rows[i].EMPLOYEE_ID,
+        role: String(rows[i].ROLE || 'viewer').toLowerCase(),
+        department: rows[i].DEPARTMENT,
+        active: String(rows[i].ACTIVE).toUpperCase() === 'TRUE',
+        createdAt: rows[i].CREATED_AT,
+        lastLogin: rows[i].LAST_LOGIN || undefined
+      };
+    }
+  }
+  return null;
+}
+
+/** Next "PREFIX-000n" id based on the highest existing numeric suffix + 1. */
+function nextIdByPrefix(sheetName, prefix) {
+  var rows = readSheet(sheetName);
+  var max = 0;
+  rows.forEach(function (row) {
+    var match = String(row.ID || '').match(/(\d+)\s*$/);
+    if (match) {
+      var value = parseInt(match[1], 10);
+      if (!isNaN(value) && value > max) max = value;
+    }
+  });
+  return prefix + '-' + Utilities.formatString('%04d', max + 1);
 }
 
 /* ------------------------------------------------------------------ */

@@ -15,10 +15,19 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { accessService } from '@/services/accessService'
 import { isDemoMode } from '@/services/datasource'
 import { getErrorMessage } from '@/services/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
+import { DEPARTMENTS } from '@/utils/constants'
 
 const DEMO_ACCOUNTS = [
   { label: 'Admin', email: 'admin@opexhub.com', password: 'Admin@123' },
@@ -39,6 +48,51 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [requestOpen, setRequestOpen] = useState(false)
+  const [requestSubmitting, setRequestSubmitting] = useState(false)
+  const [requestError, setRequestError] = useState<string | null>(null)
+  const [requestForm, setRequestForm] = useState({
+    name: '',
+    email: '',
+    employeeId: '',
+    department: '',
+    message: '',
+    password: '',
+  })
+
+  async function handleRequestAccess() {
+    if (requestSubmitting) return
+    setRequestError(null)
+    const { name, email, employeeId, password } = requestForm
+    if (!name.trim() || !email.trim() || !employeeId.trim() || !password) {
+      setRequestError('Name, email, employee ID and password are required.')
+      return
+    }
+    setRequestSubmitting(true)
+    try {
+      await accessService.submit({
+        name: name.trim(),
+        email: email.trim(),
+        employeeId: employeeId.trim(),
+        department: requestForm.department,
+        message: requestForm.message.trim(),
+        password,
+      })
+      toast.success('Access request submitted. An administrator will review it.')
+      setRequestOpen(false)
+      setRequestForm({
+        name: '',
+        email: '',
+        employeeId: '',
+        department: '',
+        message: '',
+        password: '',
+      })
+    } catch (err) {
+      setRequestError(getErrorMessage(err))
+    } finally {
+      setRequestSubmitting(false)
+    }
+  }
 
   const redirectTo =
     (location.state as { from?: { pathname?: string } })?.from?.pathname ??
@@ -228,36 +282,118 @@ export function LoginPage() {
         </div>
       ) : null}
 
-      <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
+      <Dialog
+        open={requestOpen}
+        onOpenChange={(open) => {
+          setRequestOpen(open)
+          if (!open) setRequestError(null)
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Request access</DialogTitle>
             <DialogDescription>
-              Access is granted by your organisation&apos;s OPEX Hub administrator.
-              Send a request with your business details and you will be notified once
-              your account is created.
+              Submit your details. An administrator will review and approve your
+              account — then sign in with the email and password you choose here.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="req-name">Full name</Label>
-              <Input id="req-name" placeholder="Jane Doe" />
+
+          {requestError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {requestError}
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="req-name">Full name *</Label>
+              <Input
+                id="req-name"
+                value={requestForm.name}
+                onChange={(event) => setRequestForm({ ...requestForm, name: event.target.value })}
+                placeholder="Jane Doe"
+                disabled={requestSubmitting}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="req-email">Work email</Label>
-              <Input id="req-email" type="email" placeholder="jane@company.com" />
+              <Label htmlFor="req-email">Work email *</Label>
+              <Input
+                id="req-email"
+                type="email"
+                value={requestForm.email}
+                onChange={(event) => setRequestForm({ ...requestForm, email: event.target.value })}
+                placeholder="jane@company.com"
+                disabled={requestSubmitting}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="req-empid">Employee ID *</Label>
+              <Input
+                id="req-empid"
+                value={requestForm.employeeId}
+                onChange={(event) =>
+                  setRequestForm({ ...requestForm, employeeId: event.target.value })
+                }
+                placeholder="EMP-0005"
+                disabled={requestSubmitting}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Department</Label>
+              <Select
+                value={requestForm.department}
+                onValueChange={(value) => setRequestForm({ ...requestForm, department: value })}
+                disabled={requestSubmitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENTS.map((department) => (
+                    <SelectItem key={department} value={department}>
+                      {department}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="req-password">Choose a password *</Label>
+              <Input
+                id="req-password"
+                type="password"
+                value={requestForm.password}
+                onChange={(event) =>
+                  setRequestForm({ ...requestForm, password: event.target.value })
+                }
+                placeholder="Minimum 6 characters"
+                autoComplete="new-password"
+                disabled={requestSubmitting}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="req-message">Message (optional)</Label>
+              <Input
+                id="req-message"
+                value={requestForm.message}
+                onChange={(event) =>
+                  setRequestForm({ ...requestForm, message: event.target.value })
+                }
+                placeholder="Why do you need access?"
+                disabled={requestSubmitting}
+              />
             </div>
           </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRequestOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setRequestOpen(false)}
+              disabled={requestSubmitting}
+            >
               Cancel
             </Button>
-            <Button
-              onClick={() => {
-                setRequestOpen(false)
-                toast.success('Access request submitted for review.')
-              }}
-            >
+            <Button onClick={handleRequestAccess} loading={requestSubmitting} disabled={requestSubmitting}>
               Submit request
             </Button>
           </DialogFooter>

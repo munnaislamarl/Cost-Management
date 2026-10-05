@@ -1,4 +1,4 @@
-import type { ActivityLogEntry, AppUser, CostRecord, Role } from '@/types'
+import type { AccessRequest, ActivityLogEntry, AppUser, CostRecord, Role } from '@/types'
 import {
   computeMonthly,
   computePurposeSummary,
@@ -256,6 +256,31 @@ export function seedUsers(): AppUser[] {
     createdAt: new Date(2025, 0, 5 + index * 3).toISOString(),
     lastLogin: index < 4 ? nowIso() : undefined,
   }))
+}
+
+export function seedAccessRequests(): AccessRequest[] {
+  return [
+    {
+      id: 'REQ-0001',
+      name: 'Md Munna Islam',
+      email: 'munnaislam.arl@gmail.com',
+      employeeId: 'EMP-2001',
+      department: 'Finance',
+      message: 'I need access to record my daily and monthly costs.',
+      status: 'pending',
+      requestedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+    },
+    {
+      id: 'REQ-0002',
+      name: 'Sadia Afrin',
+      email: 'sadia.afrin@example.com',
+      employeeId: 'EMP-2002',
+      department: 'Operations',
+      message: 'Please grant me viewer access for the reports.',
+      status: 'pending',
+      requestedAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
+    },
+  ]
 }
 
 export function seedActivity(): ActivityLogEntry[] {

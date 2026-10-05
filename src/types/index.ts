@@ -32,6 +32,30 @@ export interface AppUser {
   lastLogin?: string
 }
 
+export type AccessRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface AccessRequest {
+  id: string
+  name: string
+  email: string
+  employeeId: string
+  department: string
+  message: string
+  status: AccessRequestStatus
+  requestedAt: string
+  decidedBy?: string
+  decidedAt?: string
+}
+
+export interface AccessRequestInput {
+  name: string
+  email: string
+  employeeId: string
+  department: string
+  message: string
+  password: string
+}
+
 export interface SessionUser {
   id: string
   name: string

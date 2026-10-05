@@ -1,4 +1,6 @@
 import type {
+  AccessRequest,
+  AccessRequestInput,
   ActivityLogEntry,
   AppUser,
   CostRecord,
@@ -6,6 +8,7 @@ import type {
   DashboardStats,
   RecordInput,
   ReportData,
+  Role,
   SessionUser,
 } from '@/types'
 
@@ -20,6 +23,14 @@ export interface DataSource {
   listUsers(): Promise<AppUser[]>
   saveUser(user: AppUser): Promise<AppUser>
   deleteUser(id: string): Promise<void>
+
+  submitAccessRequest(input: AccessRequestInput): Promise<AccessRequest>
+  listAccessRequests(): Promise<AccessRequest[]>
+  approveAccessRequest(
+    id: string,
+    data: { role: Role; department: string; actor: string },
+  ): Promise<AppUser>
+  rejectAccessRequest(id: string, actor: string): Promise<void>
 
   listActivity(): Promise<ActivityLogEntry[]>
 

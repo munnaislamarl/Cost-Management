@@ -1,4 +1,4 @@
-import { Ban, MoreHorizontal, Pencil, UserPlus, Users as UsersIcon } from 'lucide-react'
+import { Ban, Clock, MoreHorizontal, Pencil, UserPlus, Users as UsersIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -9,7 +9,7 @@ import { SearchInput } from '@/components/common/SearchInput'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -47,11 +47,12 @@ import {
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useAuth } from '@/hooks/useAuth'
 import { useDebounce } from '@/hooks/useDebounce'
+import { accessService } from '@/services/accessService'
 import { getErrorMessage } from '@/services/apiClient'
 import { usersService } from '@/services/usersService'
-import type { AppUser, Role } from '@/types'
+import type { AccessRequest, AppUser, Role } from '@/types'
 import { DEPARTMENTS, ROLES, ROLE_LABELS } from '@/utils/constants'
-import { formatDate, initials } from '@/utils/format'
+import { formatDate, formatRelativeTime, initials } from '@/utils/format'
 import { generateId } from '@/utils/id'
 
 interface UserFormState {
@@ -82,6 +83,58 @@ export function UsersPage() {
   const [saving, setSaving] = useState(false)
   const [confirmUser, setConfirmUser] = useState<AppUser | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
+
+  const requestsResource = useAsyncResource(() => accessService.list(), [])
+  const pendingRequests = (requestsResource.data ?? []).filter(
+    (request) => request.status === 'pending',
+  )
+  const [approveTarget, setApproveTarget] = useState<AccessRequest | null>(null)
+  const [approveRole, setApproveRole] = useState<Role>('data_entry')
+  const [approveDepartment, setApproveDepartment] = useState('')
+  const [approving, setApproving] = useState(false)
+  const [rejectTarget, setRejectTarget] = useState<AccessRequest | null>(null)
+  const [rejecting, setRejecting] = useState(false)
+
+  function openApprove(request: AccessRequest) {
+    setApproveTarget(request)
+    setApproveRole('data_entry')
+    setApproveDepartment(request.department || 'Administration')
+  }
+
+  async function handleApprove() {
+    if (!approveTarget || approving) return
+    setApproving(true)
+    try {
+      await accessService.approve(approveTarget.id, {
+        role: approveRole,
+        department: approveDepartment,
+        actor: currentUser?.name ?? 'Administrator',
+      })
+      await requestsResource.refresh()
+      await resource.refresh()
+      toast.success(`${approveTarget.name} approved — they can now sign in`)
+      setApproveTarget(null)
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  async function handleReject() {
+    if (!rejectTarget || rejecting) return
+    setRejecting(true)
+    try {
+      await accessService.reject(rejectTarget.id, currentUser?.name ?? 'Administrator')
+      await requestsResource.refresh()
+      toast.success('Access request rejected')
+      setRejectTarget(null)
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setRejecting(false)
+    }
+  }
 
   const users = useMemo(() => resource.data ?? [], [resource.data])
 
@@ -204,6 +257,66 @@ export function UsersPage() {
           </div>
         </CardContent>
       </Card>
+
+      {pendingRequests.length > 0 ? (
+        <Card className="border-primary/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              Pending Access Requests
+              <Badge variant="default">{pendingRequests.length}</Badge>
+            </CardTitle>
+            <CardDescription>
+              Approve a request to create the account — the user can then sign in with
+              the email &amp; password they submitted.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {pendingRequests.map((request) => (
+              <div
+                key={request.id}
+                className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback>{initials(request.name || request.email)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {request.name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {request.email} · {request.employeeId}
+                      {request.department ? ` · ${request.department}` : ''}
+                    </p>
+                    {request.message ? (
+                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                        “{request.message}”
+                      </p>
+                    ) : null}
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Requested {formatRelativeTime(request.requestedAt)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button size="sm" variant="success" onClick={() => openApprove(request)}>
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setRejectTarget(request)}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
         {resource.error ? (
@@ -432,6 +545,87 @@ export function UsersPage() {
         confirmLabel="Remove"
         onConfirm={handleDelete}
         loading={confirmLoading}
+      />
+
+      <Dialog
+        open={approveTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setApproveTarget(null)
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Approve access</DialogTitle>
+            <DialogDescription>
+              Create an account for{' '}
+              <span className="font-medium text-foreground">{approveTarget?.name}</span> (
+              {approveTarget?.email}). They will sign in with the password they submitted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={approveRole} onValueChange={(value) => setApproveRole(value as Role)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {ROLE_LABELS[role]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Select value={approveDepartment} onValueChange={setApproveDepartment}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENTS.map((department) => (
+                    <SelectItem key={department} value={department}>
+                      {department}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setApproveTarget(null)}
+              disabled={approving}
+            >
+              Cancel
+            </Button>
+            <Button variant="success" onClick={handleApprove} loading={approving} disabled={approving}>
+              Approve &amp; create account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={rejectTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setRejectTarget(null)
+        }}
+        title="Reject request?"
+        description={
+          rejectTarget ? (
+            <>
+              This rejects the access request from{' '}
+              <span className="font-medium text-foreground">{rejectTarget.name}</span>.
+            </>
+          ) : undefined
+        }
+        confirmLabel="Reject"
+        onConfirm={handleReject}
+        loading={rejecting}
       />
     </div>
   )
