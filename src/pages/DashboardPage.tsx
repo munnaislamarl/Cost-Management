@@ -441,7 +441,7 @@ export function DashboardPage() {
               </TableHeader>
               <TableBody>
                 {filteredRecords.map((record, index) => (
-                  <TableRow key={record.id}>
+                  <TableRow key={`${record.id}-${index}`}>
                     <TableCell className="text-sm text-muted-foreground">
                       {index + 1}
                     </TableCell>
