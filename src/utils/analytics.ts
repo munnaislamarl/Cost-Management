@@ -61,6 +61,17 @@ export function shortMonthLabel(key: string): string {
   return `${SHORT_MONTHS[month - 1]} ${String(year).slice(2)}`
 }
 
+/** The last 12 months (including months with no entries), newest first.
+ * Returns `{ monthKey, month }` pairs so callers can pad totals with zeroes. */
+export function last12Months(now: Date = new Date()): Array<{ monthKey: string; month: string }> {
+  const months: Array<{ monthKey: string; month: string }> = []
+  for (let index = 11; index >= 0; index -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - index, 1)
+    months.push({ monthKey: monthKey(date), month: monthLabel(date) })
+  }
+  return months
+}
+
 export function sumCost(records: CostRecord[]): number {
   return round2(records.reduce((total, record) => total + (Number(record.costAmount) || 0), 0))
 }

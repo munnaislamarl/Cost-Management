@@ -61,7 +61,7 @@ import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useAuth } from '@/hooks/useAuth'
 import { useCategories } from '@/hooks/useCategories'
 import { dashboardService } from '@/services/dashboardService'
-import { monthKey, monthLabel, recordMonth, sumCost } from '@/utils/analytics'
+import { last12Months, monthKey, monthLabel, recordMonth, sumCost } from '@/utils/analytics'
 import { formatCompactNumber, formatCurrency, formatDate, formatRelativeTime } from '@/utils/format'
 import { canCreateRecords } from '@/utils/permissions'
 
@@ -170,6 +170,13 @@ export function DashboardPage() {
   const loading = resource.loading
 
   const byMonth = report?.byMonth ?? []
+  const byMonthTotals = new Map(byMonth.map((entry) => [entry.monthKey, entry.totalCost]))
+  const monthlyTotals = last12Months().map((month) => ({
+    monthKey: month.monthKey,
+    month: month.month,
+    totalCost: byMonthTotals.get(month.monthKey) ?? 0,
+    hasData: byMonthTotals.has(month.monthKey),
+  }))
   const defaultMonthKey = byMonth.length ? byMonth[byMonth.length - 1].monthKey : ''
   const activeMonthKey = selectedMonthKey || defaultMonthKey
   const selectedMonth =
@@ -342,7 +349,7 @@ export function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Monthly Totals</CardTitle>
-            <CardDescription>Total cost for each month with recorded spending</CardDescription>
+            <CardDescription>Total cost for each month — the last 12 months</CardDescription>
           </CardHeader>
           <CardContent className="px-0 pb-0">
             {loading ? (
@@ -365,19 +372,25 @@ export function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {byMonth.map((entry) => (
+                    {monthlyTotals.map((entry) => (
                       <TableRow
                         key={entry.monthKey}
                         className={
                           entry.monthKey === activeMonthKey
                             ? 'bg-primary/5'
+                            : entry.hasData
+                              ? 'cursor-pointer'
+                              : 'text-muted-foreground/70'
+                        }
+                        onClick={
+                          entry.hasData
+                            ? () => setSelectedMonthKey(entry.monthKey)
                             : undefined
                         }
-                        onClick={() => setSelectedMonthKey(entry.monthKey)}
                       >
                         <TableCell className="font-medium">{entry.month}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatCurrency(entry.totalCost)}
+                          {entry.hasData ? formatCurrency(entry.totalCost) : '—'}
                         </TableCell>
                       </TableRow>
                     ))}
