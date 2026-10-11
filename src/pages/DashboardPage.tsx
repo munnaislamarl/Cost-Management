@@ -61,7 +61,7 @@ import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useAuth } from '@/hooks/useAuth'
 import { useCategories } from '@/hooks/useCategories'
 import { dashboardService } from '@/services/dashboardService'
-import { monthKey, recordMonth, sumCost } from '@/utils/analytics'
+import { monthKey, monthLabel, recordMonth, sumCost } from '@/utils/analytics'
 import { formatCompactNumber, formatCurrency, formatDate, formatRelativeTime } from '@/utils/format'
 import { canCreateRecords } from '@/utils/permissions'
 
@@ -89,13 +89,18 @@ const ACTION_DOT: Record<string, string> = {
 
 const ALL = '__all__'
 
+// The running (current calendar) month, fixed at page load so the Filter Data
+// table always opens on the current month.
+const RUNNING_MONTH_KEY = monthKey(new Date())
+const RUNNING_MONTH_LABEL = monthLabel(new Date())
+
 export function DashboardPage() {
   const { user } = useAuth()
   const { categories } = useCategories()
   const canCreate = canCreateRecords(user?.role)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedMonthKey, setSelectedMonthKey] = useState('')
-  const [filterMonth, setFilterMonth] = useState('')
+  const [filterMonth, setFilterMonth] = useState(RUNNING_MONTH_KEY)
   const [filterPurpose, setFilterPurpose] = useState('')
   const [filterSearch, setFilterSearch] = useState('')
   const filterCardRef = useRef<HTMLDivElement>(null)
@@ -119,6 +124,8 @@ export function DashboardPage() {
       const key = monthKey(record.date)
       if (key && !map.has(key)) map.set(key, recordMonth(record))
     }
+    // Keep the running (current) month selectable even before any entries exist.
+    if (!map.has(RUNNING_MONTH_KEY)) map.set(RUNNING_MONTH_KEY, RUNNING_MONTH_LABEL)
     return Array.from(map.entries())
       .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([key, label]) => ({ key, label }))
