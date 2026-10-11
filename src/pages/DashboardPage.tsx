@@ -171,12 +171,14 @@ export function DashboardPage() {
 
   const byMonth = report?.byMonth ?? []
   const byMonthTotals = new Map(byMonth.map((entry) => [entry.monthKey, entry.totalCost]))
-  const monthlyTotals = last12Months().map((month) => ({
-    monthKey: month.monthKey,
-    month: month.month,
-    totalCost: byMonthTotals.get(month.monthKey) ?? 0,
-    hasData: byMonthTotals.has(month.monthKey),
-  }))
+  const monthlyTotals = last12Months()
+    .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
+    .map((month) => ({
+      monthKey: month.monthKey,
+      month: month.month,
+      totalCost: byMonthTotals.get(month.monthKey) ?? 0,
+      hasData: byMonthTotals.has(month.monthKey),
+    }))
   const defaultMonthKey = byMonth.length ? byMonth[byMonth.length - 1].monthKey : ''
   const activeMonthKey = selectedMonthKey || defaultMonthKey
   const selectedMonth =
@@ -363,7 +365,7 @@ export function DashboardPage() {
                 No cost data yet.
               </p>
             ) : (
-              <div className="max-h-[420px] overflow-auto">
+              <div className="overflow-hidden rounded-b-xl">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
