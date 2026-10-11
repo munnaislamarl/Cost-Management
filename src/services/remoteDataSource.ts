@@ -42,6 +42,9 @@ export const remoteDataSource: DataSource = {
 
   listUsers: () => unwrap<AppUser[]>('listUsers'),
   saveUser: (user: AppUser) => unwrap<AppUser>('saveUser', { user }),
+  changePassword: async (id: string, newPassword: string, actor: string) => {
+    await unwrap<{ id: string }>('changePassword', { id, newPassword, actor })
+  },
   deleteUser: async (id: string) => {
     await unwrap<{ id: string }>('deleteUser', { id })
   },

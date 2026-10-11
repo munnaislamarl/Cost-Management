@@ -237,6 +237,19 @@ export const mockDataSource: DataSource = {
     return delay(clone(user))
   },
 
+  async changePassword(id, newPassword, actor) {
+    const user = mockDb.users.find((item) => item.id === id)
+    if (!user) throw new Error(`User ${id} was not found.`)
+    mockDb.userPasswords[user.email.toLowerCase()] = newPassword
+    mockDb.log({
+      action: 'update',
+      actor,
+      detail: `Password changed for ${user.email}`,
+    })
+    mockDb.emit()
+    return delay(undefined, 300).then(() => undefined)
+  },
+
   async deleteUser(id) {
     mockDb.users = mockDb.users.filter((item) => item.id !== id)
     mockDb.emit()

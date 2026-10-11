@@ -29,7 +29,7 @@ type RowErrors = Partial<Record<keyof RowState, string>>
 
 interface MultiEntryFormProps {
   submitting?: boolean
-  onSubmit: (inputs: RecordInput[]) => void
+  onSubmit: (inputs: RecordInput[]) => boolean | Promise<boolean>
   onCancel?: () => void
 }
 
@@ -86,7 +86,7 @@ export function MultiEntryForm({ submitting, onSubmit, onCancel }: MultiEntryFor
     setRowErrors({})
   }
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     let valid = true
 
@@ -120,7 +120,9 @@ export function MultiEntryForm({ submitting, onSubmit, onCancel }: MultiEntryFor
       costDescription: row.costDescription.trim(),
       remarks: row.remarks.trim(),
     }))
-    onSubmit(inputs)
+    const handled = onSubmit(inputs)
+    const saved = typeof handled === 'boolean' ? handled : await handled
+    if (saved) reset()
   }
 
   return (

@@ -25,8 +25,8 @@ export function DataEntryPage() {
 
   const actor = user?.name ?? 'Unknown user'
 
-  async function handleSubmit(inputs: RecordInput[]) {
-    if (submitting) return
+  async function handleSubmit(inputs: RecordInput[]): Promise<boolean> {
+    if (submitting) return false
     setSubmitting(true)
     try {
       const created = await createMany(inputs, actor)
@@ -37,8 +37,10 @@ export function DataEntryPage() {
           : `${created.length} cost entries saved successfully`,
       )
       setLastBatch({ count: created.length, total, at: new Date().toISOString() })
+      return true
     } catch (error) {
       toast.error(getErrorMessage(error))
+      return false
     } finally {
       setSubmitting(false)
     }

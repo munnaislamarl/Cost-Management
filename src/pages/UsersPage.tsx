@@ -1,4 +1,4 @@
-import { Ban, Clock, MoreHorizontal, Pencil, UserPlus, Users as UsersIcon } from 'lucide-react'
+import { Ban, Clock, KeyRound, MoreHorizontal, Pencil, UserPlus, Users as UsersIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -83,6 +83,12 @@ export function UsersPage() {
   const [saving, setSaving] = useState(false)
   const [confirmUser, setConfirmUser] = useState<AppUser | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
+
+  const [passwordTarget, setPasswordTarget] = useState<AppUser | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
 
   const requestsResource = useAsyncResource(() => accessService.list(), [])
   const pendingRequests = (requestsResource.data ?? []).filter(
@@ -229,6 +235,42 @@ export function UsersPage() {
       toast.error(getErrorMessage(error))
     } finally {
       setConfirmLoading(false)
+    }
+  }
+
+  function openChangePassword(user: AppUser) {
+    setPasswordTarget(user)
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordError(null)
+  }
+
+  async function handleChangePassword() {
+    if (!passwordTarget || savingPassword) return
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.')
+      return
+    }
+    setSavingPassword(true)
+    setPasswordError(null)
+    try {
+      await usersService.changePassword(
+        passwordTarget.id,
+        newPassword,
+        currentUser?.name ?? 'Administrator',
+      )
+      toast.success(`Password updated for ${passwordTarget.name}`)
+      setPasswordTarget(null)
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setSavingPassword(false)
     }
   }
 
@@ -392,6 +434,10 @@ export function UsersPage() {
                                 <Pencil className="h-4 w-4" />
                                 Edit & role
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openChangePassword(user)}>
+                                <KeyRound className="h-4 w-4" />
+                                Change password
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => toggleActive(user)}>
                                 <Ban className="h-4 w-4" />
                                 {user.active ? 'Disable user' : 'Enable user'}
@@ -523,6 +569,72 @@ export function UsersPage() {
             </Button>
             <Button onClick={handleSave} loading={saving} disabled={saving}>
               Save user
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={passwordTarget != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPasswordTarget(null)
+            setNewPassword('')
+            setConfirmPassword('')
+            setPasswordError(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change password</DialogTitle>
+            <DialogDescription>
+              Set a new password for{' '}
+              <span className="font-medium text-foreground">{passwordTarget?.name}</span> (
+              {passwordTarget?.email}). They will use it the next time they sign in.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="reset-new-password">New password</Label>
+              <Input
+                id="reset-new-password"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder="At least 6 characters"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reset-confirm-password">Confirm new password</Label>
+              <Input
+                id="reset-confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Repeat the new password"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void handleChangePassword()
+                  }
+                }}
+              />
+            </div>
+            {passwordError ? <p className="text-xs text-destructive">{passwordError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPasswordTarget(null)}
+              disabled={savingPassword}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleChangePassword} loading={savingPassword} disabled={savingPassword}>
+              Update password
             </Button>
           </DialogFooter>
         </DialogContent>

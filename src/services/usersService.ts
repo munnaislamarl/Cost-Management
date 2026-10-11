@@ -14,6 +14,10 @@ export const usersService = {
     return dataSource.saveUser(user)
   },
 
+  changePassword(id: string, newPassword: string, actor: string): Promise<void> {
+    return dataSource.changePassword(id, newPassword, actor)
+  },
+
   remove(id: string): Promise<void> {
     return dataSource.deleteUser(id)
   },

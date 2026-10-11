@@ -90,6 +90,7 @@ using `?action=health` or `?action=listRecords`.
 | `deleteRecord` | `id`, `actor` |
 | `listUsers` | — |
 | `saveUser` | `user` |
+| `changePassword` | `id`, `newPassword`, `actor` (admin resets any user's password) |
 | `deleteUser` | `id` |
 | `listActivity` | — |
 | `listCategories` | — |

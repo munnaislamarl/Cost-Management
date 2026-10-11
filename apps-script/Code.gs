@@ -534,6 +534,8 @@ function route(action, payload) {
         return saveUser(payload);
       case 'deleteUser':
         return deleteUser(payload);
+      case 'changePassword':
+        return changePassword(payload);
 
       case 'requestAccess':
         return requestAccess(payload);
@@ -996,6 +998,44 @@ function deleteUser(payload) {
     }
   }
   return jsonResponse(false, 'User not found: ' + id, null, 'NOT_FOUND');
+}
+
+/**
+ * Admin can reset any user's password. Replaces the stored salted hash so the
+ * next sign-in uses the new password.
+ */
+function changePassword(payload) {
+  var id = String(payload.id || '');
+  var newPassword = String(payload.newPassword || '');
+  var actor = String(payload.actor || 'System Administrator');
+
+  if (!id) {
+    return jsonResponse(false, 'User ID is required.', null, 'VALIDATION');
+  }
+  if (newPassword.length < 6) {
+    return jsonResponse(false, 'New password must be at least 6 characters.', null, 'VALIDATION');
+  }
+
+  var rows = readSheet(SHEET_USERS);
+  var existing = null;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].ID) === id) {
+      existing = rows[i];
+      break;
+    }
+  }
+  if (!existing) {
+    return jsonResponse(false, 'User not found: ' + id, null, 'NOT_FOUND');
+  }
+
+  var salt = makeSalt();
+  updateRowWhere(SHEET_USERS, USER_HEADERS, 'ID', id, {
+    PASSWORD_SALT: salt,
+    PASSWORD_HASH: hashPassword(newPassword, salt)
+  });
+  invalidateCache();
+  logActivity('update', id, actor, 'Password changed for ' + existing.EMAIL);
+  return jsonResponse(true, 'Password updated.', { id: id });
 }
 
 /* ------------------------------------------------------------------ */

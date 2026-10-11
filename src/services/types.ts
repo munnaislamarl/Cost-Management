@@ -27,6 +27,7 @@ export interface DataSource {
 
   listUsers(): Promise<AppUser[]>
   saveUser(user: AppUser): Promise<AppUser>
+  changePassword(id: string, newPassword: string, actor: string): Promise<void>
   deleteUser(id: string): Promise<void>
 
   submitAccessRequest(input: AccessRequestInput): Promise<AccessRequest>
