@@ -45,6 +45,8 @@ frontend **Settings → Cost Categories** tab (admin only).
 - `listCategories` returns the active names.
 - `createCategory` rejects duplicates.
 - `deleteCategory` refuses to remove a category still used by cost entries.
+- `renameCategory` renames a category and updates every existing entry that
+  used the old name (returns `entriesUpdated`).
 - Existing records still read correctly while the column header is renamed
   from `COSTING_PURPOSE` to `COST_CATEGORY` (`rowToRecord` falls back to
   either header). Re-run `setup()` or `renamePurposeHeader()` once to finish
@@ -96,6 +98,7 @@ using `?action=health` or `?action=listRecords`.
 | `listCategories` | — |
 | `createCategory` | `name`, `actor` |
 | `deleteCategory` | `name`, `actor` |
+| `renameCategory` | `oldName`, `newName`, `actor` |
 | `getDashboardStats` | — |
 | `getReportData` | — |
 

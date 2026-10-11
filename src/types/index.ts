@@ -24,6 +24,12 @@ export interface CostCategory {
   name: string
 }
 
+export interface RenameCategoryResult {
+  oldName: string
+  newName: string
+  entriesUpdated: number
+}
+
 export interface AppUser {
   id: string
   name: string

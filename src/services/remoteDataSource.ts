@@ -10,6 +10,7 @@ import type {
   DashboardData,
   DashboardStats,
   RecordInput,
+  RenameCategoryResult,
   ReportData,
   Role,
   SessionUser,
@@ -39,6 +40,8 @@ export const remoteDataSource: DataSource = {
   deleteCategory: async (name: string) => {
     await unwrap<{ name: string }>('deleteCategory', { name })
   },
+  renameCategory: (oldName: string, newName: string, actor: string) =>
+    unwrap<RenameCategoryResult>('renameCategory', { oldName, newName, actor }),
 
   listUsers: () => unwrap<AppUser[]>('listUsers'),
   saveUser: (user: AppUser) => unwrap<AppUser>('saveUser', { user }),

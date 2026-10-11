@@ -8,6 +8,7 @@ import type {
   DashboardData,
   DashboardStats,
   RecordInput,
+  RenameCategoryResult,
   ReportData,
   Role,
   SessionUser,
@@ -24,6 +25,7 @@ export interface DataSource {
   listCategories(): Promise<string[]>
   createCategory(name: string, actor: string): Promise<CostCategory>
   deleteCategory(name: string): Promise<void>
+  renameCategory(oldName: string, newName: string, actor: string): Promise<RenameCategoryResult>
 
   listUsers(): Promise<AppUser[]>
   saveUser(user: AppUser): Promise<AppUser>

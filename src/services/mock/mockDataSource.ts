@@ -8,6 +8,7 @@ import type {
   CostRecord,
   DashboardData,
   DashboardStats,
+  RenameCategoryResult,
   ReportData,
   Role,
   SessionUser,
@@ -221,6 +222,44 @@ export const mockDataSource: DataSource = {
     mockDb.log({ action: 'delete', actor: 'system', detail: `Removed cost category "${cleaned}"` })
     mockDb.emit()
     return delay(undefined, 300).then(() => undefined)
+  },
+
+  async renameCategory(oldName, newName, actor) {
+    const oldCleaned = String(oldName || '').trim()
+    const newCleaned = String(newName || '').trim()
+    if (!oldCleaned || !newCleaned) throw new Error('Category names are required.')
+    if (oldCleaned.toLowerCase() === newCleaned.toLowerCase()) {
+      throw new Error('New name is the same as the current name.')
+    }
+    if (!mockDb.categories.some((item) => item.toLowerCase() === oldCleaned.toLowerCase())) {
+      throw new Error(`Category not found: ${oldCleaned}`)
+    }
+    if (
+      mockDb.categories.some(
+        (item) =>
+          item.toLowerCase() !== oldCleaned.toLowerCase() &&
+          item.toLowerCase() === newCleaned.toLowerCase(),
+      )
+    ) {
+      throw new Error('A category with that name already exists.')
+    }
+    const before = mockDb.records.filter((item) => item.costingPurpose === oldCleaned).length
+    mockDb.categories = mockDb.categories.map((item) =>
+      item.toLowerCase() === oldCleaned.toLowerCase() ? newCleaned : item,
+    )
+    mockDb.records = mockDb.records.map((item) =>
+      item.costingPurpose === oldCleaned ? { ...item, costingPurpose: newCleaned } : item,
+    )
+    mockDb.log({
+      action: 'update',
+      actor,
+      detail: `Renamed cost category "${oldCleaned}" to "${newCleaned}" (${before} entries updated)`,
+    })
+    mockDb.emit()
+    return delay<RenameCategoryResult>(
+      { oldName: oldCleaned, newName: newCleaned, entriesUpdated: before },
+      300,
+    )
   },
 
   async saveUser(user) {

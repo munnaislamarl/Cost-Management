@@ -1,5 +1,5 @@
 import { dataSource } from '@/services/datasource'
-import type { CostCategory } from '@/types'
+import type { CostCategory, RenameCategoryResult } from '@/types'
 import { DEFAULT_COST_CATEGORIES } from '@/utils/constants'
 
 export const categoriesService = {
@@ -20,5 +20,9 @@ export const categoriesService = {
 
   remove(name: string): Promise<void> {
     return dataSource.deleteCategory(name)
+  },
+
+  rename(oldName: string, newName: string, actor: string): Promise<RenameCategoryResult> {
+    return dataSource.renameCategory(oldName, newName, actor)
   },
 }

@@ -527,6 +527,8 @@ function route(action, payload) {
         return createCategory(payload);
       case 'deleteCategory':
         return deleteCategory(payload);
+      case 'renameCategory':
+        return renameCategory(payload);
 
       case 'listUsers':
         return jsonResponse(true, 'Users loaded.', listUsers());
@@ -906,6 +908,89 @@ function deleteCategory(payload) {
     }
   }
   return jsonResponse(false, 'Category not found: ' + name, null, 'NOT_FOUND');
+}
+
+/**
+ * Renames a cost category and updates every existing record that uses the old
+ * name, so past entries stay consistent with the new label.
+ */
+function renameCategory(payload) {
+  var oldName = String(payload.oldName || '').trim();
+  var newName = String(payload.newName || '').trim();
+  var actor = String(payload.actor || 'System Administrator');
+
+  if (!oldName) {
+    return jsonResponse(false, 'Current category name is required.', null, 'VALIDATION');
+  }
+  if (!newName) {
+    return jsonResponse(false, 'New category name is required.', null, 'VALIDATION');
+  }
+  if (oldName.toLowerCase() === newName.toLowerCase()) {
+    return jsonResponse(false, 'New name is the same as the current name.', null, 'VALIDATION');
+  }
+
+  var categories = readSheet(SHEET_CATEGORIES);
+  var exists = categories.some(function (row) {
+    return String(row.NAME || '').trim().toLowerCase() === oldName.toLowerCase();
+  });
+  if (!exists) {
+    return jsonResponse(false, 'Category not found: ' + oldName, null, 'NOT_FOUND');
+  }
+  var duplicate = categories.some(function (row) {
+    var rowName = String(row.NAME || '').trim();
+    return (
+      rowName.toLowerCase() !== oldName.toLowerCase() &&
+      rowName.toLowerCase() === newName.toLowerCase()
+    );
+  });
+  if (duplicate) {
+    return jsonResponse(false, 'A category with that name already exists.', null, 'DUPLICATE');
+  }
+
+  updateRowWhere(SHEET_CATEGORIES, CATEGORY_HEADERS, 'NAME', oldName, { NAME: newName });
+
+  var recordsSheet = getSheet(SHEET_RECORDS);
+  var headerRow = recordsSheet.getRange(1, 1, 1, RECORD_HEADERS.length).getValues()[0];
+  var categoryColumn = -1;
+  for (var headerIndex = 0; headerIndex < headerRow.length; headerIndex++) {
+    var header = String(headerRow[headerIndex]).toUpperCase();
+    if (header === 'COST_CATEGORY' || header === 'COSTING_PURPOSE') {
+      categoryColumn = headerIndex;
+      break;
+    }
+  }
+
+  var updated = 0;
+  if (categoryColumn !== -1) {
+    var lastRow = recordsSheet.getLastRow();
+    if (lastRow > 1) {
+      var columnRange = recordsSheet.getRange(2, categoryColumn + 1, lastRow - 1, 1);
+      var columnValues = columnRange.getValues();
+      var changed = [];
+      for (var rowIndex = 0; rowIndex < columnValues.length; rowIndex++) {
+        if (String(columnValues[rowIndex][0] || '') === oldName) {
+          changed.push([newName]);
+          updated++;
+        } else {
+          changed.push(columnValues[rowIndex]);
+        }
+      }
+      if (updated > 0) columnRange.setValues(changed);
+    }
+  }
+
+  invalidateCache();
+  logActivity(
+    'update',
+    '',
+    actor,
+    'Renamed cost category "' + oldName + '" to "' + newName + '" (' + updated + ' entries updated)'
+  );
+  return jsonResponse(true, 'Category renamed.', {
+    oldName: oldName,
+    newName: newName,
+    entriesUpdated: updated
+  });
 }
 
 /* ------------------------------------------------------------------ */

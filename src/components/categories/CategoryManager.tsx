@@ -1,11 +1,20 @@
-import { Plus, Tags, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Tags, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/useAuth'
 import { useCategories } from '@/hooks/useCategories'
 import { getErrorMessage } from '@/services/apiClient'
@@ -18,6 +27,11 @@ export function CategoryManager() {
   const [busy, setBusy] = useState(false)
   const [confirmCategory, setConfirmCategory] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  const [renameTarget, setRenameTarget] = useState<string | null>(null)
+  const [newName, setNewName] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  const [renameError, setRenameError] = useState<string | null>(null)
 
   async function handleAdd() {
     const cleaned = name.trim()
@@ -54,6 +68,48 @@ export function CategoryManager() {
       toast.error(getErrorMessage(error))
     } finally {
       setDeleting(false)
+    }
+  }
+
+  function openRename(category: string) {
+    setRenameTarget(category)
+    setNewName(category)
+    setRenameError(null)
+  }
+
+  async function handleRename() {
+    if (!renameTarget || renaming) return
+    const cleaned = newName.trim()
+    if (!cleaned) {
+      setRenameError('Enter a category name first.')
+      return
+    }
+    if (cleaned.toLowerCase() === renameTarget.toLowerCase()) {
+      setRenameError('New name is the same as the current name.')
+      return
+    }
+    if (categories.some((item) => item.toLowerCase() === cleaned.toLowerCase())) {
+      setRenameError('A category with that name already exists.')
+      return
+    }
+    setRenaming(true)
+    try {
+      const result = await categoriesService.rename(
+        renameTarget,
+        cleaned,
+        user?.name ?? 'System Administrator',
+      )
+      await refresh()
+      setRenameTarget(null)
+      toast.success(
+        `Category renamed to "${cleaned}" — ${result.entriesUpdated} ${
+          result.entriesUpdated === 1 ? 'entry was' : 'entries were'
+        } updated`,
+      )
+    } catch (error) {
+      setRenameError(getErrorMessage(error))
+    } finally {
+      setRenaming(false)
     }
   }
 
@@ -99,15 +155,26 @@ export function CategoryManager() {
                 <span className="min-w-0 truncate text-sm font-medium text-foreground">
                   {category}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => setConfirmCategory(category)}
-                  aria-label={`Remove ${category}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground hover:text-primary"
+                    onClick={() => openRename(category)}
+                    aria-label={`Rename ${category}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => setConfirmCategory(category)}
+                    aria-label={`Remove ${category}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </li>
             ))}
             {categories.length === 0 ? (
@@ -119,10 +186,62 @@ export function CategoryManager() {
 
           <p className="text-xs text-muted-foreground">
             A category that is used by existing cost entries cannot be removed — rename or
-            keep it instead.
+            keep it instead. Renaming updates existing entries with the new name.
           </p>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={renameTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setRenameTarget(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename category</DialogTitle>
+            <DialogDescription>
+              All existing cost entries under "{renameTarget}" will be updated to the new
+              name.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="rename-category">New name</Label>
+            <Input
+              id="rename-category"
+              value={newName}
+              onChange={(event) => {
+                setNewName(event.target.value)
+                setRenameError(null)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  void handleRename()
+                }
+              }}
+              disabled={renaming}
+              autoFocus
+            />
+            {renameError ? (
+              <p className="text-sm text-destructive">{renameError}</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRenameTarget(null)}
+              disabled={renaming}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleRename} loading={renaming} disabled={renaming}>
+              <Pencil className="h-4 w-4" />
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={confirmCategory != null}
