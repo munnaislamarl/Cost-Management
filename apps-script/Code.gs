@@ -25,12 +25,13 @@ var SHEET_RECORDS = 'Records';
 var SHEET_USERS = 'Users';
 var SHEET_ACTIVITY = 'Activity';
 var SHEET_REQUESTS = 'Requests';
+var SHEET_CATEGORIES = 'Categories';
 
 var RECORD_HEADERS = [
   'ID',
   'DATE',
   'MONTH',
-  'COSTING_PURPOSE',
+  'COST_CATEGORY',
   'COST_AMOUNT',
   'COST_DESCRIPTION',
   'TOTAL_COST',
@@ -57,6 +58,8 @@ var USER_HEADERS = [
 
 var ACTIVITY_HEADERS = ['ID', 'ACTION', 'RECORD_ID', 'ACTOR', 'DETAIL', 'TIMESTAMP'];
 
+var CATEGORY_HEADERS = ['NAME', 'CREATED_BY', 'CREATED_AT'];
+
 var REQUEST_HEADERS = [
   'ID',
   'NAME',
@@ -74,9 +77,11 @@ var REQUEST_HEADERS = [
 
 var CACHE_RECORDS = 'cm_records_v1';
 var CACHE_USERS = 'cm_users_v1';
+var CACHE_CATEGORIES = 'cm_categories_v1';
 var CACHE_TTL_SECONDS = 25;
 
-var COSTING_PURPOSES = [
+/** Default cost categories, seeded into the Categories sheet on setup(). */
+var SEED_CATEGORIES = [
   'Essential Expenses (N.Ganj)',
   'Office Expenses',
   'Bazar (Grocery / Market)',
@@ -123,6 +128,8 @@ function setup() {
   ensureSheet(ss, SHEET_USERS, USER_HEADERS);
   ensureSheet(ss, SHEET_ACTIVITY, ACTIVITY_HEADERS);
   ensureSheet(ss, SHEET_REQUESTS, REQUEST_HEADERS);
+  ensureSheet(ss, SHEET_CATEGORIES, CATEGORY_HEADERS);
+  renamePurposeHeader();
   formatMonthColumn();
 
   var users = readSheet(SHEET_USERS);
@@ -140,6 +147,17 @@ function setup() {
       PASSWORD_SALT: salt,
       CREATED_AT: new Date().toISOString(),
       LAST_LOGIN: ''
+    });
+  }
+
+  var categories = readSheet(SHEET_CATEGORIES);
+  if (categories.length === 0) {
+    SEED_CATEGORIES.forEach(function (name) {
+      appendObject(SHEET_CATEGORIES, CATEGORY_HEADERS, {
+        NAME: name,
+        CREATED_BY: 'System Administrator',
+        CREATED_AT: new Date().toISOString()
+      });
     });
   }
 
@@ -226,7 +244,7 @@ function seedSampleData() {
 
   // Randomised rows across the last 6 months
   for (var i = 0; i < 100; i++) {
-    var purpose = COSTING_PURPOSES[Math.floor(Math.random() * COSTING_PURPOSES.length)];
+    var purpose = SEED_CATEGORIES[Math.floor(Math.random() * SEED_CATEGORIES.length)];
     var daysAgo = Math.floor(Math.random() * 180);
     var date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo, 10, 0, 0);
     var amount = randomAmountFor(purpose);
@@ -244,7 +262,7 @@ function seedSampleData() {
       ID: row[0],
       DATE: row[1],
       MONTH: row[2],
-      COSTING_PURPOSE: row[3],
+      COST_CATEGORY: row[3],
       COST_AMOUNT: row[4],
       COST_DESCRIPTION: row[5],
       TOTAL_COST: 0,
@@ -314,6 +332,23 @@ function lockFormats() {
 // Kept for backwards compatibility with older scheduled triggers.
 function formatMonthColumn() {
   lockFormats();
+}
+
+/**
+ * Renames the Records category column header from the old "COSTING_PURPOSE"
+ * to "COST_CATEGORY". Existing values are untouched. Run setup() or this
+ * function once; reading works with either header.
+ */
+function renamePurposeHeader() {
+  var sheet = getSheet(SHEET_RECORDS);
+  var column = RECORD_HEADERS.indexOf('COST_CATEGORY') + 1;
+  if (column <= 0) return 'COST_CATEGORY column not found.';
+  var header = sheet.getRange(1, column).getValue();
+  if (String(header).toUpperCase() === 'COSTING_PURPOSE') {
+    sheet.getRange(1, column).setValue('COST_CATEGORY');
+  }
+  invalidateCache();
+  return 'Records category header is now COST_CATEGORY.';
 }
 
 /**
@@ -486,6 +521,13 @@ function route(action, payload) {
       case 'deleteRecord':
         return deleteRecord(payload);
 
+      case 'listCategories':
+        return jsonResponse(true, 'Categories loaded.', listCategories());
+      case 'createCategory':
+        return createCategory(payload);
+      case 'deleteCategory':
+        return deleteCategory(payload);
+
       case 'listUsers':
         return jsonResponse(true, 'Users loaded.', listUsers());
       case 'saveUser':
@@ -636,7 +678,7 @@ function createRecord(payload) {
     ID: id,
     DATE: normalizeDate(input.date),
     MONTH: monthLabel(new Date(input.date)),
-    COSTING_PURPOSE: input.costingPurpose,
+    COST_CATEGORY: input.costingPurpose,
     COST_AMOUNT: Number(input.costAmount) || 0,
     COST_DESCRIPTION: input.costDescription,
     TOTAL_COST: 0,
@@ -681,7 +723,7 @@ function createRecords(payload) {
       ID: id,
       DATE: normalizeDate(input.date),
       MONTH: monthLabel(new Date(input.date)),
-      COSTING_PURPOSE: input.costingPurpose,
+      COST_CATEGORY: input.costingPurpose,
       COST_AMOUNT: Number(input.costAmount) || 0,
       COST_DESCRIPTION: input.costDescription,
       TOTAL_COST: 0,
@@ -722,7 +764,7 @@ function updateRecord(payload) {
   var updated = updateRowWhere(SHEET_RECORDS, RECORD_HEADERS, 'ID', id, {
     DATE: normalizeDate(input.date),
     MONTH: monthLabel(new Date(input.date)),
-    COSTING_PURPOSE: input.costingPurpose,
+    COST_CATEGORY: input.costingPurpose,
     COST_AMOUNT: Number(input.costAmount) || 0,
     COST_DESCRIPTION: input.costDescription,
     REMARKS: input.remarks || '',
@@ -786,6 +828,82 @@ function recomputeTotals() {
   });
   sheet.getRange(2, column, values.length, 1).setValues(values);
   lockFormats();
+}
+
+/* ------------------------------------------------------------------ */
+/* Cost categories (admin manages these from Settings)                 */
+/* ------------------------------------------------------------------ */
+
+function listCategories() {
+  var cached = cacheGet(CACHE_CATEGORIES);
+  if (cached) return cached;
+
+  var names = readSheet(SHEET_CATEGORIES)
+    .map(function (row) {
+      return String(row.NAME || '').trim();
+    })
+    .filter(function (name) {
+      return name;
+    });
+  cachePut(CACHE_CATEGORIES, names);
+  return names;
+}
+
+function createCategory(payload) {
+  var name = String(payload.name || '').trim();
+  var actor = String(payload.actor || 'System Administrator');
+  if (!name) {
+    return jsonResponse(false, 'Category name is required.', null, 'VALIDATION');
+  }
+
+  var existing = readSheet(SHEET_CATEGORIES).some(function (row) {
+    return String(row.NAME || '').toLowerCase() === name.toLowerCase();
+  });
+  if (existing) {
+    return jsonResponse(false, 'That category already exists.', null, 'DUPLICATE');
+  }
+
+  appendObject(SHEET_CATEGORIES, CATEGORY_HEADERS, {
+    NAME: name,
+    CREATED_BY: actor,
+    CREATED_AT: new Date().toISOString()
+  });
+  invalidateCache();
+  logActivity('create', '', actor, 'Created cost category "' + name + '"');
+  return jsonResponse(true, 'Category added.', { name: name });
+}
+
+function deleteCategory(payload) {
+  var name = String(payload.name || '').trim();
+  var actor = String(payload.actor || 'System Administrator');
+  if (!name) {
+    return jsonResponse(false, 'Category name is required.', null, 'VALIDATION');
+  }
+
+  var used = readSheet(SHEET_RECORDS).filter(function (row) {
+    return String(row.COSTING_PURPOSE || row.COST_CATEGORY || '') === name;
+  }).length;
+  if (used > 0) {
+    return jsonResponse(
+      false,
+      '"' + name + '" is used by ' + used + ' cost ' + (used === 1 ? 'entry' : 'entries') +
+        ' and cannot be removed.',
+      null,
+      'IN_USE'
+    );
+  }
+
+  var sheet = getSheet(SHEET_CATEGORIES);
+  var rows = readSheet(SHEET_CATEGORIES);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].NAME || '').toLowerCase() === name.toLowerCase()) {
+      sheet.deleteRow(i + 2);
+      invalidateCache();
+      logActivity('delete', '', actor, 'Removed cost category "' + name + '"');
+      return jsonResponse(true, 'Category removed.', { name: name });
+    }
+  }
+  return jsonResponse(false, 'Category not found: ' + name, null, 'NOT_FOUND');
 }
 
 /* ------------------------------------------------------------------ */
@@ -1412,7 +1530,7 @@ function makeRecordId(sequence) {
 function validateRecordInput(input) {
   var errors = [];
   if (!input.date) errors.push('Date is required.');
-  if (!input.costingPurpose) errors.push('Costing purpose is required.');
+  if (!input.costingPurpose) errors.push('Cost category is required.');
   if (input.costAmount === '' || input.costAmount === null || input.costAmount === undefined) {
     errors.push('Cost amount is required.');
   } else if (!(Number(input.costAmount) >= 0)) {
@@ -1427,7 +1545,10 @@ function rowToRecord(row) {
     id: String(row.ID || ''),
     date: toIso(row.DATE),
     month: monthLabel(new Date(row.DATE)),
-    costingPurpose: row.COSTING_PURPOSE || '',
+    costingPurpose:
+      row.COST_CATEGORY !== undefined && row.COST_CATEGORY !== ''
+        ? row.COST_CATEGORY
+        : row.COSTING_PURPOSE || '',
     costAmount: Number(row.COST_AMOUNT) || 0,
     costDescription: row.COST_DESCRIPTION || '',
     totalCost: Number(row.TOTAL_COST) || 0,

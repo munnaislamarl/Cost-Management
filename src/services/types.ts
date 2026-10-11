@@ -3,6 +3,7 @@ import type {
   AccessRequestInput,
   ActivityLogEntry,
   AppUser,
+  CostCategory,
   CostRecord,
   DashboardData,
   DashboardStats,
@@ -19,6 +20,10 @@ export interface DataSource {
   createMany(inputs: RecordInput[], actor: string): Promise<CostRecord[]>
   updateRecord(id: string, input: RecordInput, actor: string): Promise<CostRecord>
   deleteRecord(id: string, actor: string): Promise<void>
+
+  listCategories(): Promise<string[]>
+  createCategory(name: string, actor: string): Promise<CostCategory>
+  deleteCategory(name: string): Promise<void>
 
   listUsers(): Promise<AppUser[]>
   saveUser(user: AppUser): Promise<AppUser>

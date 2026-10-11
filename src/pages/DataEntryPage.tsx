@@ -48,7 +48,7 @@ export function DataEntryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Cost Entry"
-        description="Add one or many cost purposes for the same date. Each row has its own description and remarks."
+        description="Add one or many cost categories for the same date. Each row has its own description and remarks."
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -57,7 +57,7 @@ export function DataEntryPage() {
             <div>
               <CardTitle>New Cost Entries</CardTitle>
               <CardDescription>
-                Use “Add another purpose” to enter multiple costs for the same date at once.
+                Use “Add another category” to enter multiple costs for the same date at once.
               </CardDescription>
             </div>
           </CardHeader>
@@ -109,7 +109,7 @@ export function DataEntryPage() {
             <CardContent className="flex gap-3 p-5 text-sm text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p>
-                All rows in one save share the same date but keep separate purpose, amount,
+                All rows in one save share the same date but keep separate category, amount,
                 description and remarks.
               </p>
             </CardContent>

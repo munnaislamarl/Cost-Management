@@ -236,7 +236,7 @@ export function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="User Management"
-        description="Create users, assign roles and control access to OPEX Hub."
+        description="Create users, assign roles and control access to Cost Management."
         actions={
           <Button size="sm" onClick={openCreate}>
             <UserPlus className="h-4 w-4" />

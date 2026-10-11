@@ -5,7 +5,7 @@ export const STORAGE_KEYS = {
   preferences: 'opex-hub.preferences',
 } as const
 
-export const COSTING_PURPOSES = [
+export const DEFAULT_COST_CATEGORIES = [
   'Essential Expenses (N.Ganj)',
   'Office Expenses',
   'Bazar (Grocery / Market)',
@@ -25,7 +25,7 @@ export const COSTING_PURPOSES = [
   'Unexpected Expenses',
 ] as const
 
-export type CostingPurpose = (typeof COSTING_PURPOSES)[number]
+export type DefaultCostCategory = (typeof DEFAULT_COST_CATEGORIES)[number]
 
 export const DEPARTMENTS = [
   'Administration',

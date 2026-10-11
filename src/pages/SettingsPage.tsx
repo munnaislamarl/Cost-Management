@@ -1,6 +1,7 @@
-import { Bell, Monitor, Moon, Palette, Shield, Sun, User } from 'lucide-react'
+import { Bell, Monitor, Moon, Palette, Shield, Sun, Tags, User } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { CategoryManager } from '@/components/categories/CategoryManager'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,7 @@ const THEMES: Array<{ value: Theme; label: string; icon: typeof Sun }> = [
 export function SettingsPage() {
   const { user } = useAuth()
   const { theme, setTheme } = useTheme()
+  const isAdmin = user?.role === 'admin'
   const [preferences, setPreferences] = useLocalStorage<Preferences>(
     STORAGE_KEYS.preferences,
     {
@@ -75,6 +77,12 @@ export function SettingsPage() {
             <Bell className="h-4 w-4" />
             Notifications
           </TabsTrigger>
+          {isAdmin ? (
+            <TabsTrigger value="categories">
+              <Tags className="h-4 w-4" />
+              Cost Categories
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="system">
             <Shield className="h-4 w-4" />
             System
@@ -151,7 +159,7 @@ export function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Theme</CardTitle>
-              <CardDescription>Choose how OPEX Hub looks on this device.</CardDescription>
+              <CardDescription>Choose how Cost Management looks on this device.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-3">
               {THEMES.map((option) => {
@@ -222,6 +230,12 @@ export function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin ? (
+          <TabsContent value="categories">
+            <CategoryManager />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="system">
           <div className="grid gap-6 lg:grid-cols-2">

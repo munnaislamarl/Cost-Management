@@ -43,10 +43,10 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
         <div className="relative z-10 max-w-md space-y-6">
           <h1 className="text-3xl font-semibold leading-tight text-white">
-            Track every cost, purpose and month in one place.
+            Track every cost, category and month in one place.
           </h1>
           <p className="text-sm leading-relaxed text-white/80">
-            Record daily and monthly spending by costing purpose, watch your running
+            Record daily and monthly spending by cost category, watch your running
             totals and generate clear reports — all backed by a secure, auditable data
             layer.
           </p>

@@ -12,8 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useCategories } from '@/hooks/useCategories'
 import type { RecordInput } from '@/types'
-import { COSTING_PURPOSES } from '@/utils/constants'
 import { formatCurrency, toInputDate } from '@/utils/format'
 import { generateId } from '@/utils/id'
 
@@ -44,6 +44,7 @@ function newRow(): RowState {
 }
 
 export function MultiEntryForm({ submitting, onSubmit, onCancel }: MultiEntryFormProps) {
+  const { categories } = useCategories()
   const [date, setDate] = useState(() => toInputDate())
   const [rows, setRows] = useState<RowState[]>(() => [newRow()])
   const [dateError, setDateError] = useState<string | null>(null)
@@ -99,7 +100,7 @@ export function MultiEntryForm({ submitting, onSubmit, onCancel }: MultiEntryFor
     const errors: Record<string, RowErrors> = {}
     for (const row of rows) {
       const rowError: RowErrors = {}
-      if (!row.costingPurpose) rowError.costingPurpose = 'Select a purpose'
+      if (!row.costingPurpose) rowError.costingPurpose = 'Select a category'
       if (row.costAmount.trim() !== '' && Number(row.costAmount) < 0) {
         rowError.costAmount = 'Amount cannot be negative'
       }
@@ -177,7 +178,7 @@ export function MultiEntryForm({ submitting, onSubmit, onCancel }: MultiEntryFor
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>
-                    Costing Purpose <span className="text-destructive">*</span>
+                    Cost Category <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     value={row.costingPurpose}
@@ -185,12 +186,12 @@ export function MultiEntryForm({ submitting, onSubmit, onCancel }: MultiEntryFor
                     disabled={submitting}
                   >
                     <SelectTrigger aria-invalid={Boolean(errors.costingPurpose)}>
-                      <SelectValue placeholder="Select purpose" />
+                      <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {COSTING_PURPOSES.map((purpose) => (
-                        <SelectItem key={purpose} value={purpose}>
-                          {purpose}
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -257,7 +258,7 @@ export function MultiEntryForm({ submitting, onSubmit, onCancel }: MultiEntryFor
 
       <Button type="button" variant="outline" onClick={addRow} disabled={submitting}>
         <Plus className="h-4 w-4" />
-        Add another purpose
+        Add another category
       </Button>
 
       <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">

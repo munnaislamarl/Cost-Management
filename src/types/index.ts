@@ -20,6 +20,10 @@ export type RecordInput = Pick<
   'date' | 'costingPurpose' | 'costAmount' | 'costDescription' | 'remarks'
 >
 
+export interface CostCategory {
+  name: string
+}
+
 export interface AppUser {
   id: string
   name: string

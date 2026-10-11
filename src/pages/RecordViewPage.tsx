@@ -89,7 +89,7 @@ export function RecordViewPage() {
     { label: 'Date', value: formatDate(record.date), icon: <Calendar className="h-4 w-4" /> },
     { label: 'Month', value: recordMonth(record) },
     {
-      label: 'Costing Purpose',
+      label: 'Cost Category',
       value: <Badge variant="muted">{record.costingPurpose}</Badge>,
       icon: <Tag className="h-4 w-4" />,
     },

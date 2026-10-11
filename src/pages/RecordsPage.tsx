@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAuth } from '@/hooks/useAuth'
+import { useCategories } from '@/hooks/useCategories'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useRecords } from '@/hooks/useRecords'
@@ -35,7 +36,7 @@ import { getErrorMessage } from '@/services/apiClient'
 import { recordsService } from '@/services/recordsService'
 import type { CostRecord, RecordInput } from '@/types'
 import { monthKey, recordMonth } from '@/utils/analytics'
-import { COSTING_PURPOSES, DEFAULT_PAGE_SIZE } from '@/utils/constants'
+import { DEFAULT_PAGE_SIZE } from '@/utils/constants'
 import { formatCurrency, formatDate, formatDateTime } from '@/utils/format'
 import { canDeleteRecords, canEditRecords } from '@/utils/permissions'
 
@@ -46,6 +47,7 @@ export function RecordsPage() {
   const navigate = useNavigate()
   const { records, loading, error, refresh, update, remove } = useRecords()
   const isMobile = useMediaQuery('(max-width: 767px)')
+  const { categories } = useCategories()
 
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 300)
@@ -164,7 +166,7 @@ export function RecordsPage() {
     },
     {
       key: 'costingPurpose',
-      header: 'Costing Purpose',
+      header: 'Cost Category',
       sortable: true,
       render: (record) => (
         <Badge variant="muted" className="max-w-[200px] truncate">
@@ -322,16 +324,16 @@ export function RecordsPage() {
             value={search}
             onChange={(event) => resetPageOn(() => setSearch(event.target.value))}
             onClear={() => resetPageOn(() => setSearch(''))}
-            placeholder="Search purpose, description, ID…"
+            placeholder="Search category, description, ID…"
             aria-label="Search entries"
           />
           <Select value={purpose} onValueChange={(value) => resetPageOn(() => setPurpose(value))}>
-            <SelectTrigger aria-label="Filter by purpose">
-              <SelectValue placeholder="Costing purpose" />
+            <SelectTrigger aria-label="Filter by category">
+              <SelectValue placeholder="Cost Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All purposes</SelectItem>
-              {COSTING_PURPOSES.map((item) => (
+              <SelectItem value={ALL}>All categories</SelectItem>
+              {categories.map((item) => (
                 <SelectItem key={item} value={item}>
                   {item}
                 </SelectItem>

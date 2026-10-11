@@ -157,7 +157,7 @@ export function computeMonthSummary(records: CostRecord[]): MonthSummary[] {
     map.set(key, entry)
   }
   return Array.from(map.entries())
-    .sort((a, b) => b[0].localeCompare(a[0]))
+    .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([, value]) => value)
 }
 

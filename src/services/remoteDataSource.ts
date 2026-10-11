@@ -5,6 +5,7 @@ import type {
   AccessRequestInput,
   ActivityLogEntry,
   AppUser,
+  CostCategory,
   CostRecord,
   DashboardData,
   DashboardStats,
@@ -30,6 +31,13 @@ export const remoteDataSource: DataSource = {
     unwrap<CostRecord>('updateRecord', { id, record: input, actor }),
   deleteRecord: async (id: string, actor: string) => {
     await unwrap<{ id: string }>('deleteRecord', { id, actor })
+  },
+
+  listCategories: () => unwrap<string[]>('listCategories'),
+  createCategory: (name: string, actor: string) =>
+    unwrap<CostCategory>('createCategory', { name, actor }),
+  deleteCategory: async (name: string) => {
+    await unwrap<{ name: string }>('deleteCategory', { name })
   },
 
   listUsers: () => unwrap<AppUser[]>('listUsers'),

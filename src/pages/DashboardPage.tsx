@@ -59,9 +59,9 @@ import {
 } from '@/components/ui/table'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useAuth } from '@/hooks/useAuth'
+import { useCategories } from '@/hooks/useCategories'
 import { dashboardService } from '@/services/dashboardService'
 import { monthKey, recordMonth, sumCost } from '@/utils/analytics'
-import { COSTING_PURPOSES } from '@/utils/constants'
 import { formatCompactNumber, formatCurrency, formatDate, formatRelativeTime } from '@/utils/format'
 import { canCreateRecords } from '@/utils/permissions'
 
@@ -91,6 +91,7 @@ const ALL = '__all__'
 
 export function DashboardPage() {
   const { user } = useAuth()
+  const { categories } = useCategories()
   const canCreate = canCreateRecords(user?.role)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedMonthKey, setSelectedMonthKey] = useState('')
@@ -240,7 +241,7 @@ export function DashboardPage() {
           loading={loading}
         />
         <StatCard
-          title="Top Purpose"
+          title="Top Category"
           value={stats?.topPurpose ?? '—'}
           icon={Activity}
           tone="primary"
@@ -253,9 +254,9 @@ export function DashboardPage() {
         <Card>
           <CardHeader className="flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <CardTitle>Purpose Breakdown</CardTitle>
+              <CardTitle>Category Breakdown</CardTitle>
               <CardDescription>
-                {selectedMonth?.month ?? '—'} cost by costing purpose
+                {selectedMonth?.month ?? '—'} cost by cost category
               </CardDescription>
             </div>
             <div className="w-full sm:w-[190px]">
@@ -289,7 +290,7 @@ export function DashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead>Costing Purpose</TableHead>
+                      <TableHead>Cost Category</TableHead>
                       <TableHead className="text-right">Cost Amount</TableHead>
                       <TableHead className="hidden text-right sm:table-cell">Share</TableHead>
                     </TableRow>
@@ -394,7 +395,7 @@ export function DashboardPage() {
           <div>
             <CardTitle>Filter Data</CardTitle>
             <CardDescription>
-              Filter by month and costing purpose — every matching entry appears below.
+              Filter by month and cost category — every matching entry appears below.
             </CardDescription>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -421,14 +422,14 @@ export function DashboardPage() {
                 value={filterPurpose || ALL}
                 onValueChange={(value) => setFilterPurpose(value === ALL ? '' : value)}
               >
-                <SelectTrigger aria-label="Filter by costing purpose">
-                  <SelectValue placeholder="All purposes" />
+                <SelectTrigger aria-label="Filter by cost category">
+                  <SelectValue placeholder="All categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL}>All purposes</SelectItem>
-                  {COSTING_PURPOSES.map((purpose) => (
-                    <SelectItem key={purpose} value={purpose}>
-                      {purpose}
+                  <SelectItem value={ALL}>All categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -451,7 +452,7 @@ export function DashboardPage() {
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead className="w-[64px]">#</TableHead>
                   <TableHead className="w-[120px]">Date</TableHead>
-                  <TableHead>Costing Purpose</TableHead>
+                  <TableHead>Cost Category</TableHead>
                   <TableHead className="hidden md:table-cell">Cost Description / Remarks</TableHead>
                   <TableHead className="text-right">Cost Amount</TableHead>
                 </TableRow>
@@ -560,8 +561,8 @@ export function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Purpose Share</CardTitle>
-            <CardDescription>Distribution of spending by purpose</CardDescription>
+            <CardTitle>Category Share</CardTitle>
+            <CardDescription>Distribution of spending by category</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -620,8 +621,8 @@ export function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Spending by Purpose</CardTitle>
-            <CardDescription>Top costing purposes by total amount</CardDescription>
+            <CardTitle>Spending by Category</CardTitle>
+            <CardDescription>Top cost categories by total amount</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -721,7 +722,7 @@ export function DashboardPage() {
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableHead>Date</TableHead>
-                    <TableHead>Purpose</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead className="hidden md:table-cell">Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="hidden sm:table-cell">Month</TableHead>

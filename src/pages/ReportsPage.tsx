@@ -47,9 +47,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useAsyncResource } from '@/hooks/useAsyncResource'
+import { useCategories } from '@/hooks/useCategories'
 import { recordsService } from '@/services/recordsService'
 import { applyRecordFilter, computeReportData, monthKey, monthLabel, recordMonth } from '@/utils/analytics'
-import { COSTING_PURPOSES } from '@/utils/constants'
 import { buildFilename, downloadCsv, toCsv } from '@/utils/csv'
 import { formatCompactNumber, formatCurrency, formatDate, formatNumber } from '@/utils/format'
 
@@ -70,6 +70,7 @@ const PIE_COLORS = [
 ]
 
 export function ReportsPage() {
+  const { categories } = useCategories()
   const [purpose, setPurpose] = useState(ALL)
   const [month, setMonth] = useState(ALL)
   const [from, setFrom] = useState('')
@@ -90,11 +91,15 @@ export function ReportsPage() {
 
   const filtered = useMemo(
     () =>
-      applyRecordFilter(resource.data ?? [], {
+      [...applyRecordFilter(resource.data ?? [], {
         purpose: purpose === ALL ? undefined : purpose,
         month: month === ALL ? undefined : month,
         from: from || undefined,
         to: to || undefined,
+      })].sort((a, b) => {
+        const diff = new Date(a.date).getTime() - new Date(b.date).getTime()
+        if (diff !== 0) return diff
+        return a.id.localeCompare(b.id)
       }),
     [resource.data, purpose, month, from, to],
   )
@@ -110,7 +115,7 @@ export function ReportsPage() {
       ID: record.id,
       DATE: record.date,
       MONTH: record.month,
-      COSTING_PURPOSE: record.costingPurpose,
+      COST_CATEGORY: record.costingPurpose,
       COST_AMOUNT: record.costAmount,
       COST_DESCRIPTION: record.costDescription,
       TOTAL_COST: record.totalCost,
@@ -139,7 +144,7 @@ export function ReportsPage() {
       <div className="no-print">
         <PageHeader
           title="Cost Reports"
-          description="Analyse spending by purpose and month, then export board-ready summaries."
+          description="Analyse spending by category and month, then export board-ready summaries."
           actions={
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
@@ -158,14 +163,14 @@ export function ReportsPage() {
       <Card className="no-print">
         <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 sm:p-5">
           <div className="space-y-2">
-            <Label htmlFor="report-purpose">Costing Purpose</Label>
+            <Label htmlFor="report-category">Cost Category</Label>
             <Select value={purpose} onValueChange={setPurpose}>
-              <SelectTrigger id="report-purpose">
-                <SelectValue placeholder="All purposes" />
+              <SelectTrigger id="report-category">
+                <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All purposes</SelectItem>
-                {COSTING_PURPOSES.map((item) => (
+                <SelectItem value={ALL}>All categories</SelectItem>
+                {categories.map((item) => (
                   <SelectItem key={item} value={item}>
                     {item}
                   </SelectItem>
@@ -301,8 +306,8 @@ export function ReportsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Purpose Breakdown</CardTitle>
-            <CardDescription>Share of spending by costing purpose</CardDescription>
+            <CardTitle>Category Breakdown</CardTitle>
+            <CardDescription>Share of spending by cost category</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -342,8 +347,8 @@ export function ReportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Spending by Purpose</CardTitle>
-          <CardDescription>Cost grouped by costing purpose</CardDescription>
+          <CardTitle>Spending by Category</CardTitle>
+          <CardDescription>Cost grouped by cost category</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -391,8 +396,8 @@ export function ReportsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Purpose Summary</CardTitle>
-            <CardDescription>Entries, total and share per purpose</CardDescription>
+            <CardTitle>Category Summary</CardTitle>
+            <CardDescription>Entries, total and share per category</CardDescription>
           </CardHeader>
           <CardContent className="px-0 pb-0">
             {loading ? (
@@ -408,7 +413,7 @@ export function ReportsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead>Purpose</TableHead>
+                      <TableHead>Category</TableHead>
                       <TableHead className="text-right">Entries</TableHead>
                       <TableHead className="text-right">Cost</TableHead>
                       <TableHead className="text-right">Share</TableHead>
@@ -508,7 +513,7 @@ export function ReportsPage() {
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableHead>ID</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Purpose</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead className="hidden md:table-cell">Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="hidden sm:table-cell">Month</TableHead>

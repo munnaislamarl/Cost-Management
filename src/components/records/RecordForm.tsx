@@ -12,8 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useCategories } from '@/hooks/useCategories'
 import type { RecordInput } from '@/types'
-import { COSTING_PURPOSES } from '@/utils/constants'
 import { toInputDate } from '@/utils/format'
 import { type FieldRules, validateForm } from '@/utils/validation'
 
@@ -39,7 +39,7 @@ function emptyValues(): RecordInput {
 
 const RULES: FieldRules<Record<string, unknown>> = {
   date: [(v) => (v ? null : 'Date is required')],
-  costingPurpose: [(v) => (v ? null : 'Select a costing purpose')],
+  costingPurpose: [(v) => (v ? null : 'Select a cost category')],
   costAmount: [
     (v) =>
       v === '' || v == null
@@ -116,6 +116,7 @@ export function RecordForm({
   }
 
   const isEdit = mode === 'edit'
+  const { categories } = useCategories()
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -163,7 +164,7 @@ export function RecordForm({
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="costingPurpose">
-            Costing Purpose <span className="text-destructive">*</span>
+            Cost Category <span className="text-destructive">*</span>
           </Label>
           <Select
             value={values.costingPurpose}
@@ -171,12 +172,12 @@ export function RecordForm({
             disabled={submitting}
           >
             <SelectTrigger id="costingPurpose" aria-invalid={Boolean(errors.costingPurpose)}>
-              <SelectValue placeholder="Select costing purpose" />
+              <SelectValue placeholder="Select cost category" />
             </SelectTrigger>
             <SelectContent>
-              {COSTING_PURPOSES.map((purpose) => (
-                <SelectItem key={purpose} value={purpose}>
-                  {purpose}
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
                 </SelectItem>
               ))}
             </SelectContent>

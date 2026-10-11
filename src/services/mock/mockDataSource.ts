@@ -4,6 +4,7 @@ import type {
   AccessRequest,
   ActivityLogEntry,
   AppUser,
+  CostCategory,
   CostRecord,
   DashboardData,
   DashboardStats,
@@ -18,6 +19,7 @@ import {
   computeStats,
   monthLabel,
 } from '@/utils/analytics'
+import { DEFAULT_COST_CATEGORIES } from '@/utils/constants'
 import { buildEmployeeId, generateId, generateRecordId, nowIso } from '@/utils/id'
 
 const MOCK_CREDENTIALS: Record<string, { password: string; userId: string }> = {
@@ -34,6 +36,7 @@ class MockDatabase {
   users: AppUser[]
   activity: ActivityLogEntry[]
   requests: AccessRequest[]
+  categories: string[]
   requestPasswords: Record<string, string>
   userPasswords: Record<string, string>
   private listeners = new Set<Listener>()
@@ -43,6 +46,7 @@ class MockDatabase {
     this.users = seedUsers()
     this.activity = seedActivity()
     this.requests = seedAccessRequests()
+    this.categories = [...DEFAULT_COST_CATEGORIES]
     this.requestPasswords = { 'REQ-0001': 'Request@123' }
     this.userPasswords = {
       'admin@opexhub.com': 'Admin@123',
@@ -189,6 +193,34 @@ export const mockDataSource: DataSource = {
 
   async listUsers() {
     return delay(clone(mockDb.users))
+  },
+
+  async listCategories() {
+    return delay(clone(mockDb.categories))
+  },
+
+  async createCategory(name, actor) {
+    const cleaned = String(name || '').trim()
+    if (!cleaned) throw new Error('Category name is required.')
+    if (mockDb.categories.some((item) => item.toLowerCase() === cleaned.toLowerCase())) {
+      throw new Error('That category already exists.')
+    }
+    mockDb.categories = [...mockDb.categories, cleaned]
+    mockDb.log({ action: 'create', actor, detail: `Created cost category "${cleaned}"` })
+    mockDb.emit()
+    return delay<CostCategory>({ name: cleaned })
+  },
+
+  async deleteCategory(name) {
+    const cleaned = String(name || '').trim()
+    const used = mockDb.records.filter((item) => item.costingPurpose === cleaned).length
+    if (used > 0) {
+      throw new Error(`"${cleaned}" is used by ${used} cost ${used === 1 ? 'entry' : 'entries'} and cannot be removed.`)
+    }
+    mockDb.categories = mockDb.categories.filter((item) => item !== cleaned)
+    mockDb.log({ action: 'delete', actor: 'system', detail: `Removed cost category "${cleaned}"` })
+    mockDb.emit()
+    return delay(undefined, 300).then(() => undefined)
   },
 
   async saveUser(user) {

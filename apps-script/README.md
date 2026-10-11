@@ -14,8 +14,11 @@ Apps Script Web App.
 1. Open your Google Sheet → **Extensions → Apps Script**.
 2. Replace `Code.gs` with this project's `apps-script/Code.gs`.
 3. Run `setup()` once and authorise. It creates:
-   - `Records`, `Users`, `Activity` tabs with headers
+   - `Records`, `Users`, `Activity`, `Categories` tabs with headers
    - a default admin: `admin@opexhub.com` / `ChangeMe@123`
+   - seeds the `Categories` tab with the 17 default cost categories and
+     renames the Records category column to `COST_CATEGORY` if it was still
+     the old `COSTING_PURPOSE` header
 4. (Recommended) Edit `setApiKey()`, then run it to store a shared API key.
 5. (Optional) Run `seedSampleData()` to fill the sheet with sample cost data.
 6. **Deploy → New deployment → Web app**
@@ -26,16 +29,28 @@ Apps Script Web App.
 ## Records sheet columns
 
 ```
-ID  DATE  MONTH  COSTING_PURPOSE  COST_AMOUNT  COST_DESCRIPTION
+ID  DATE  MONTH  COST_CATEGORY  COST_AMOUNT  COST_DESCRIPTION
 TOTAL_COST  REMARKS  CREATED_BY  CREATED_AT  UPDATED_BY  UPDATED_AT
 ```
 
 `TOTAL_COST` is a **running cumulative total**, recomputed automatically after
 every create / update / delete, ordered by date.
 
-## Costing purposes
+## Cost categories
 
-The 17 purposes used by the frontend form and filters:
+Categories are stored in their own `Categories` tab and managed from the
+frontend **Settings → Cost Categories** tab (admin only).
+
+- `setup()` seeds the tab with the 17 default categories when empty.
+- `listCategories` returns the active names.
+- `createCategory` rejects duplicates.
+- `deleteCategory` refuses to remove a category still used by cost entries.
+- Existing records still read correctly while the column header is renamed
+  from `COSTING_PURPOSE` to `COST_CATEGORY` (`rowToRecord` falls back to
+  either header). Re-run `setup()` or `renamePurposeHeader()` once to finish
+  the header rename.
+
+The 17 default categories:
 
 ```
 Essential Expenses (N.Ganj), Office Expenses, Bazar (Grocery / Market), TSM,
@@ -77,6 +92,9 @@ using `?action=health` or `?action=listRecords`.
 | `saveUser` | `user` |
 | `deleteUser` | `id` |
 | `listActivity` | — |
+| `listCategories` | — |
+| `createCategory` | `name`, `actor` |
+| `deleteCategory` | `name`, `actor` |
 | `getDashboardStats` | — |
 | `getReportData` | — |
 
