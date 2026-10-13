@@ -93,8 +93,8 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-[148px] space-y-1.5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+        <div className="space-y-1.5 lg:col-span-2">
           <Label htmlFor="entry-date">Date</Label>
           <Input
             id="entry-date"
@@ -107,7 +107,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
           {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
         </div>
 
-        <div className="w-full min-w-[240px] flex-1 space-y-1.5">
+        <div className="space-y-1.5 lg:col-span-2">
           <Label>Cost Category</Label>
           <Select
             value={entry.costingPurpose}
@@ -130,7 +130,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
           ) : null}
         </div>
 
-        <div className="w-[130px] space-y-1.5">
+        <div className="space-y-1.5 lg:col-span-2">
           <Label htmlFor="entry-amount">Amount</Label>
           <Input
             id="entry-amount"
@@ -149,7 +149,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
           ) : null}
         </div>
 
-        <div className="min-w-[220px] flex-[1.4] space-y-1.5">
+        <div className="space-y-1.5 lg:col-span-2">
           <Label htmlFor="entry-description">Cost Description</Label>
           <Input
             id="entry-description"
@@ -164,7 +164,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
           ) : null}
         </div>
 
-        <div className="min-w-[160px] flex-1 space-y-1.5">
+        <div className="space-y-1.5 lg:col-span-2">
           <Label htmlFor="entry-remarks">Remarks</Label>
           <Input
             id="entry-remarks"
@@ -175,9 +175,9 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
           />
         </div>
 
-        <div className="pb-0.5">
-          <Button type="submit" disabled={submitting} loading={submitting}>
-            Save entry
+        <div className="sm:col-span-1 lg:col-span-2">
+          <Button type="submit" className="w-full" disabled={submitting} loading={submitting}>
+            Add Entry
           </Button>
         </div>
       </div>
