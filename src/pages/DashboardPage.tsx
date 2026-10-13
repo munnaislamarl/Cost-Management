@@ -61,7 +61,7 @@ import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { useAuth } from '@/hooks/useAuth'
 import { useCategories } from '@/hooks/useCategories'
 import { dashboardService } from '@/services/dashboardService'
-import { last12Months, monthKey, monthLabel, recordMonth, sumCost } from '@/utils/analytics'
+import { computeMonthBreakdown, last12Months, monthKey, monthLabel, recordMonth, sumCost } from '@/utils/analytics'
 import { formatCompactNumber, formatCurrency, formatDate, formatRelativeTime } from '@/utils/format'
 import { canCreateRecords } from '@/utils/permissions'
 
@@ -169,7 +169,7 @@ export function DashboardPage() {
   const topPurposes = (report?.purposes ?? []).slice(0, 8)
   const loading = resource.loading
 
-  const byMonth = report?.byMonth ?? []
+  const byMonth = computeMonthBreakdown(dataRecords)
   const byMonthTotals = new Map(byMonth.map((entry) => [entry.monthKey, entry.totalCost]))
   const monthlyTotals = last12Months()
     .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
