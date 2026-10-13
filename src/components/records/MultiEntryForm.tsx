@@ -154,7 +154,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
       <div className="overflow-hidden rounded-lg border border-border">
         <div className="hidden items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 md:flex">
           <span className="h-5 w-5 shrink-0" />
-          <div className="grid min-w-0 flex-1 gap-x-3 md:grid-cols-4">
+          <div className="grid min-w-0 flex-1 gap-x-3 md:grid-cols-[2.2fr_1fr_2.5fr_2fr]">
             <span className="text-xs font-medium text-muted-foreground">Cost Category</span>
             <span className="text-xs font-medium text-muted-foreground">Amount</span>
             <span className="text-xs font-medium text-muted-foreground">Cost Description</span>
@@ -173,7 +173,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                   {index + 1}
                 </span>
 
-                <div className="grid min-w-0 flex-1 gap-x-3 gap-y-2 md:grid-cols-4">
+                <div className="grid min-w-0 flex-1 gap-x-3 gap-y-2 md:grid-cols-[2.2fr_1fr_2.5fr_2fr]">
                 <div className="space-y-1">
                   <Label className="md:hidden">Cost Category</Label>
                   <Select

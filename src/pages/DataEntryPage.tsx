@@ -93,13 +93,13 @@ export function DataEntryPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Cost Entry"
         description="Add one or many cost entries for the same date — then save them all at once."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         <Card>
           <CardHeader className="border-b border-border">
             <div>
@@ -110,7 +110,7 @@ export function DataEntryPage() {
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4">
             <MultiEntryForm
               date={entryDate}
               onDateChange={setEntryDate}
@@ -120,7 +120,7 @@ export function DataEntryPage() {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Entry details</CardTitle>

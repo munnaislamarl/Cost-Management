@@ -18,7 +18,7 @@ export function DashboardLayout() {
           searchValue={search}
           onSearchChange={setSearch}
         />
-        <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:py-8">
+        <main className="w-full px-4 py-6 sm:px-6 lg:py-8">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>
