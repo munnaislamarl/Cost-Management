@@ -141,30 +141,30 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
         {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {rows.map((row, index) => {
           const errors = rowErrors[row.key] ?? {}
           return (
-            <div key={row.key} className="rounded-xl border border-border bg-muted/20 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+            <div key={row.key} className="rounded-lg border border-border bg-muted/20 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold leading-none text-primary">
                   {index + 1}
                 </span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="text-muted-foreground hover:text-destructive"
+                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
                   onClick={() => removeRow(row.key)}
                   disabled={submitting || rows.length === 1}
                   aria-label="Remove entry"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-4">
-                <div className="space-y-1.5">
+              <div className="grid gap-x-3 gap-y-2 md:grid-cols-4">
+                <div className="space-y-1">
                   <Label>Cost Category</Label>
                   <Select
                     value={row.costingPurpose}
@@ -187,7 +187,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                   ) : null}
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <Label>Amount</Label>
                   <Input
                     type="number"
@@ -205,7 +205,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                   ) : null}
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <Label>Cost Description</Label>
                   <Input
                     value={row.costDescription}
@@ -221,7 +221,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                   ) : null}
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <Label>Remarks</Label>
                   <Input
                     value={row.remarks}
