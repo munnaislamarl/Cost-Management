@@ -1524,10 +1524,11 @@ function monthBreakdown(records) {
   var map = {};
 
   records.forEach(function (record) {
-    var key = monthKey(new Date(record.date));
-    if (!key) return;
+    var iso = String(record.date || '');
+    var key = iso.slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(key)) return;
     if (!map[key]) {
-      map[key] = { month: monthLabel(new Date(record.date)), monthKey: key, totalCost: 0, purposes: {} };
+      map[key] = { month: monthLabelFromKey(key), monthKey: key, totalCost: 0, purposes: {} };
     }
     var monthEntry = map[key];
     var purpose = record.costingPurpose || 'Uncategorised';
@@ -1711,6 +1712,14 @@ function monthKey(date) {
   var d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) return '';
   return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+}
+
+/** Converts a "YYYY-MM" key into a full label such as "October-2026". */
+function monthLabelFromKey(key) {
+  var parts = String(key).split('-');
+  var month = Number(parts[1]);
+  if (!month || month < 1 || month > 12) return key;
+  return FULL_MONTHS[month - 1] + '-' + parts[0];
 }
 
 function toIso(value) {

@@ -185,7 +185,7 @@ export function DashboardPage() {
     byMonth.find((entry) => entry.monthKey === activeMonthKey) ??
     (byMonth.length ? byMonth[byMonth.length - 1] : undefined)
   const monthTotal = selectedMonth?.totalCost ?? 0
-  const grandTotal = byMonth.reduce((sum, entry) => sum + entry.totalCost, 0)
+  const grandTotal = monthlyTotals.reduce((sum, entry) => sum + entry.totalCost, 0)
   const filterTotal = sumCost(filteredRecords)
 
   return (
@@ -392,7 +392,7 @@ export function DashboardPage() {
                       >
                         <TableCell className="font-medium">{entry.month}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {entry.hasData ? formatCurrency(entry.totalCost) : '—'}
+                          {formatCurrency(entry.totalCost)}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -43,16 +43,34 @@ const SHORT_MONTHS = [
   'Dec',
 ]
 
+function dateParts(value: string | Date): { year: number; month: number } | null {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null
+    return { year: value.getFullYear(), month: value.getMonth() + 1 }
+  }
+  // Prefer the literal YYYY-MM-DD prefix so month grouping is timezone-independent
+  // (avoids off-by-one-month shifts when a UTC timestamp is parsed in a local tz).
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (match) {
+    const year = Number(match[1])
+    const month = Number(match[2])
+    if (Number.isFinite(year) && month >= 1 && month <= 12) return { year, month }
+  }
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  return { year: parsed.getFullYear(), month: parsed.getMonth() + 1 }
+}
+
 export function monthKey(date: string | Date): string {
-  const parsed = date instanceof Date ? date : new Date(date)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`
+  const parts = dateParts(date)
+  if (!parts) return ''
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}`
 }
 
 export function monthLabel(date: string | Date): string {
-  const parsed = date instanceof Date ? date : new Date(date)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return `${FULL_MONTHS[parsed.getMonth()]}-${parsed.getFullYear()}`
+  const parts = dateParts(date)
+  if (!parts) return ''
+  return `${FULL_MONTHS[parts.month - 1]}-${parts.year}`
 }
 
 export function shortMonthLabel(key: string): string {
