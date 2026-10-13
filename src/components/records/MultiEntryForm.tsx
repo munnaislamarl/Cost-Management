@@ -1,3 +1,4 @@
+import { Plus, Save, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -13,48 +14,73 @@ import {
 import { useCategories } from '@/hooks/useCategories'
 import type { RecordInput } from '@/types'
 import { toInputDate } from '@/utils/format'
+import { generateId } from '@/utils/id'
 
-interface EntryFormProps {
-  date: string
-  onDateChange: (value: string) => void
-  submitting?: boolean
-  onSubmit: (input: RecordInput) => boolean | Promise<boolean>
-}
-
-interface EntryState {
+interface RowState {
+  key: string
   costingPurpose: string
   costAmount: string
   costDescription: string
   remarks: string
 }
 
-type EntryErrors = Partial<Record<keyof EntryState, string>>
+type RowErrors = Partial<Record<keyof RowState, string>>
 
-function emptyEntry(): EntryState {
-  return { costingPurpose: '', costAmount: '', costDescription: '', remarks: '' }
+interface EntryFormProps {
+  date: string
+  onDateChange: (value: string) => void
+  submitting?: boolean
+  onSubmit: (inputs: RecordInput[]) => boolean | Promise<boolean>
+}
+
+function newRow(): RowState {
+  return {
+    key: generateId('row'),
+    costingPurpose: '',
+    costAmount: '',
+    costDescription: '',
+    remarks: '',
+  }
 }
 
 export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: EntryFormProps) {
   const { categories } = useCategories()
-  const [entry, setEntry] = useState<EntryState>(emptyEntry)
+  const [rows, setRows] = useState<RowState[]>(() => [newRow()])
   const [dateError, setDateError] = useState<string | null>(null)
-  const [errors, setErrors] = useState<EntryErrors>({})
+  const [rowErrors, setRowErrors] = useState<Record<string, RowErrors>>({})
 
-  function updateField(field: keyof EntryState, value: string) {
-    setEntry((prev) => ({ ...prev, [field]: value }))
-    setErrors((prev) => {
-      if (!prev[field]) return prev
+  function updateRow(key: string, patch: Partial<RowState>) {
+    setRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)))
+    setRowErrors((prev) => {
+      if (!prev[key]) return prev
       const next = { ...prev }
-      delete next[field]
+      const fields = Object.keys(patch) as (keyof RowErrors)[]
+      const remaining = { ...next[key] }
+      for (const field of fields) delete remaining[field]
+      if (Object.keys(remaining).length === 0) delete next[key]
+      else next[key] = remaining
+      return next
+    })
+  }
+
+  function addRow() {
+    setRows((prev) => [...prev, newRow()])
+  }
+
+  function removeRow(key: string) {
+    setRows((prev) => (prev.length === 1 ? prev : prev.filter((row) => row.key !== key)))
+    setRowErrors((prev) => {
+      const next = { ...prev }
+      delete next[key]
       return next
     })
   }
 
   function reset() {
-    setEntry(emptyEntry())
+    setRows([newRow()])
     onDateChange(toInputDate())
     setDateError(null)
-    setErrors({})
+    setRowErrors({})
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -68,118 +94,157 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
       setDateError(null)
     }
 
-    const nextErrors: EntryErrors = {}
-    if (!entry.costingPurpose) nextErrors.costingPurpose = 'Select a category'
-    if (entry.costAmount.trim() === '') {
-      nextErrors.costAmount = 'Enter an amount'
-    } else if (Number(entry.costAmount) < 0) {
-      nextErrors.costAmount = 'Amount cannot be negative'
+    const errors: Record<string, RowErrors> = {}
+    for (const row of rows) {
+      const rowError: RowErrors = {}
+      if (!row.costingPurpose) rowError.costingPurpose = 'Select a category'
+      if (row.costAmount.trim() === '') {
+        rowError.costAmount = 'Enter an amount'
+      } else if (Number(row.costAmount) < 0) {
+        rowError.costAmount = 'Amount cannot be negative'
+      }
+      if (row.costDescription.trim().length < 2) rowError.costDescription = 'Add a description'
+      if (Object.keys(rowError).length > 0) {
+        errors[row.key] = rowError
+        valid = false
+      }
     }
-    if (entry.costDescription.trim().length < 2) nextErrors.costDescription = 'Add a description'
-    setErrors(nextErrors)
-    if (!valid || Object.keys(nextErrors).length > 0) return
+    setRowErrors(errors)
+    if (!valid) return
 
-    const input: RecordInput = {
+    const inputs: RecordInput[] = rows.map((row) => ({
       date,
-      costingPurpose: entry.costingPurpose,
-      costAmount: Number(entry.costAmount),
-      costDescription: entry.costDescription.trim(),
-      remarks: entry.remarks.trim(),
-    }
-    const handled = onSubmit(input)
+      costingPurpose: row.costingPurpose,
+      costAmount: Number(row.costAmount),
+      costDescription: row.costDescription.trim(),
+      remarks: row.remarks.trim(),
+    }))
+    const handled = onSubmit(inputs)
     const saved = typeof handled === 'boolean' ? handled : await handled
     if (saved) reset()
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-        <div className="space-y-1.5 lg:col-span-2">
-          <Label htmlFor="entry-date">Date</Label>
-          <Input
-            id="entry-date"
-            type="date"
-            value={date}
-            onChange={(event) => onDateChange(event.target.value)}
-            disabled={submitting}
-            aria-invalid={Boolean(dateError)}
-          />
-          {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <div className="max-w-[260px] space-y-1.5">
+        <Label htmlFor="entry-date">
+          Date <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="entry-date"
+          type="date"
+          value={date}
+          onChange={(event) => onDateChange(event.target.value)}
+          disabled={submitting}
+          aria-invalid={Boolean(dateError)}
+        />
+        {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
+      </div>
 
-        <div className="space-y-1.5 lg:col-span-2">
-          <Label>Cost Category</Label>
-          <Select
-            value={entry.costingPurpose}
-            onValueChange={(value) => updateField('costingPurpose', value)}
-            disabled={submitting}
-          >
-            <SelectTrigger aria-invalid={Boolean(errors.costingPurpose)}>
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.costingPurpose ? (
-            <p className="text-xs text-destructive">{errors.costingPurpose}</p>
-          ) : null}
-        </div>
+      <div className="space-y-4">
+        {rows.map((row, index) => {
+          const errors = rowErrors[row.key] ?? {}
+          return (
+            <div key={row.key} className="rounded-xl border border-border bg-muted/20 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  {index + 1}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => removeRow(row.key)}
+                  disabled={submitting || rows.length === 1}
+                  aria-label="Remove entry"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
 
-        <div className="space-y-1.5 lg:col-span-2">
-          <Label htmlFor="entry-amount">Amount</Label>
-          <Input
-            id="entry-amount"
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
-            value={entry.costAmount}
-            onChange={(event) => updateField('costAmount', event.target.value)}
-            placeholder="0.00"
-            disabled={submitting}
-            aria-invalid={Boolean(errors.costAmount)}
-          />
-          {errors.costAmount ? (
-            <p className="text-xs text-destructive">{errors.costAmount}</p>
-          ) : null}
-        </div>
+              <div className="grid gap-3 md:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label>Cost Category</Label>
+                  <Select
+                    value={row.costingPurpose}
+                    onValueChange={(value) => updateRow(row.key, { costingPurpose: value })}
+                    disabled={submitting}
+                  >
+                    <SelectTrigger aria-invalid={Boolean(errors.costingPurpose)}>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.costingPurpose ? (
+                    <p className="text-xs text-destructive">{errors.costingPurpose}</p>
+                  ) : null}
+                </div>
 
-        <div className="space-y-1.5 lg:col-span-2">
-          <Label htmlFor="entry-description">Cost Description</Label>
-          <Input
-            id="entry-description"
-            value={entry.costDescription}
-            onChange={(event) => updateField('costDescription', event.target.value)}
-            placeholder="e.g. Mirzapur + Chips + Gari Vara"
-            disabled={submitting}
-            aria-invalid={Boolean(errors.costDescription)}
-          />
-          {errors.costDescription ? (
-            <p className="text-xs text-destructive">{errors.costDescription}</p>
-          ) : null}
-        </div>
+                <div className="space-y-1.5">
+                  <Label>Amount</Label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={row.costAmount}
+                    onChange={(event) => updateRow(row.key, { costAmount: event.target.value })}
+                    placeholder="0.00"
+                    disabled={submitting}
+                    aria-invalid={Boolean(errors.costAmount)}
+                  />
+                  {errors.costAmount ? (
+                    <p className="text-xs text-destructive">{errors.costAmount}</p>
+                  ) : null}
+                </div>
 
-        <div className="space-y-1.5 lg:col-span-2">
-          <Label htmlFor="entry-remarks">Remarks</Label>
-          <Input
-            id="entry-remarks"
-            value={entry.remarks}
-            onChange={(event) => updateField('remarks', event.target.value)}
-            placeholder="Optional (cash, bKash…)"
-            disabled={submitting}
-          />
-        </div>
+                <div className="space-y-1.5">
+                  <Label>Cost Description</Label>
+                  <Input
+                    value={row.costDescription}
+                    onChange={(event) =>
+                      updateRow(row.key, { costDescription: event.target.value })
+                    }
+                    placeholder="e.g. Mirzapur + Chips + Gari Vara"
+                    disabled={submitting}
+                    aria-invalid={Boolean(errors.costDescription)}
+                  />
+                  {errors.costDescription ? (
+                    <p className="text-xs text-destructive">{errors.costDescription}</p>
+                  ) : null}
+                </div>
 
-        <div className="sm:col-span-1 lg:col-span-2">
-          <Button type="submit" className="w-full" disabled={submitting} loading={submitting}>
-            Add Entry
-          </Button>
-        </div>
+                <div className="space-y-1.5">
+                  <Label>Remarks</Label>
+                  <Input
+                    value={row.remarks}
+                    onChange={(event) => updateRow(row.key, { remarks: event.target.value })}
+                    placeholder="Optional (cash, bKash…)"
+                    disabled={submitting}
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <Button type="submit" disabled={submitting} loading={submitting}>
+          <Save className="h-4 w-4" />
+          Save Entry
+        </Button>
+        <Button type="button" variant="outline" onClick={addRow} disabled={submitting}>
+          <Plus className="h-4 w-4" />
+          Add Entry
+        </Button>
       </div>
     </form>
   )

@@ -71,17 +71,18 @@ export function DataEntryPage() {
     }
   }, [records, entryDate])
 
-  async function handleSubmit(input: RecordInput): Promise<boolean> {
+  async function handleSubmit(inputs: RecordInput[]): Promise<boolean> {
     if (submitting) return false
     setSubmitting(true)
     try {
-      await createMany([input], actor)
-      toast.success('Cost entry saved successfully')
-      setLastBatch({
-        count: 1,
-        total: Number(input.costAmount) || 0,
-        at: new Date().toISOString(),
-      })
+      await createMany(inputs, actor)
+      const total = inputs.reduce((sum, input) => sum + (Number(input.costAmount) || 0), 0)
+      toast.success(
+        inputs.length === 1
+          ? 'Cost entry saved successfully'
+          : `${inputs.length} cost entries saved successfully`,
+      )
+      setLastBatch({ count: inputs.length, total, at: new Date().toISOString() })
       return true
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -95,7 +96,7 @@ export function DataEntryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Cost Entry"
-        description="Enter one cost entry at a time — category, amount, description and remarks in a single row."
+        description="Add one or many cost entries for the same date — then save them all at once."
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -104,7 +105,8 @@ export function DataEntryPage() {
             <div>
               <CardTitle>New Cost Entry</CardTitle>
               <CardDescription>
-                Fill in the row and save. Each entry is recorded with the selected date.
+                Pick a date, add one or more entry rows, then save. Every row is recorded
+                under the selected date.
               </CardDescription>
             </div>
           </CardHeader>
@@ -187,11 +189,14 @@ export function DataEntryPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-success">
                   <CheckCircle2 className="h-4 w-4" />
-                  Last entry saved
+                  Last batch saved
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-sm text-muted-foreground">
-                <p>{formatCurrency(lastBatch.total)}</p>
+                <p>
+                  {lastBatch.count} {lastBatch.count === 1 ? 'entry' : 'entries'} ·{' '}
+                  {formatCurrency(lastBatch.total)}
+                </p>
                 <p>{new Date(lastBatch.at).toLocaleString()}</p>
               </CardContent>
             </Card>
@@ -201,8 +206,9 @@ export function DataEntryPage() {
             <CardContent className="flex gap-3 p-5 text-sm text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p>
-                Each entry keeps its own date, category, amount, description and remarks. The
-                previous day's summary updates as you change the date above.
+                All rows in one save share the selected date but keep their own category,
+                amount, description and remarks. The previous day's summary updates as you
+                change the date above.
               </p>
             </CardContent>
           </Card>
