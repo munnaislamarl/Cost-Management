@@ -151,8 +151,20 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
         {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
       </div>
 
-      <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
-        {rows.map((row, index) => {
+      <div className="overflow-hidden rounded-lg border border-border">
+        <div className="hidden items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 md:flex">
+          <span className="h-5 w-5 shrink-0" />
+          <div className="grid min-w-0 flex-1 gap-x-3 md:grid-cols-4">
+            <span className="text-xs font-medium text-muted-foreground">Cost Category</span>
+            <span className="text-xs font-medium text-muted-foreground">Amount</span>
+            <span className="text-xs font-medium text-muted-foreground">Cost Description</span>
+            <span className="text-xs font-medium text-muted-foreground">Remarks</span>
+          </div>
+          <span className="h-6 w-6 shrink-0" />
+        </div>
+
+        <div className="divide-y divide-border">
+          {rows.map((row, index) => {
           const errors = rowErrors[row.key] ?? {}
           return (
             <div key={row.key} className="p-3">
@@ -163,7 +175,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
 
                 <div className="grid min-w-0 flex-1 gap-x-3 gap-y-2 md:grid-cols-4">
                 <div className="space-y-1">
-                  <Label>Cost Category</Label>
+                  <Label className="md:hidden">Cost Category</Label>
                   <Select
                     value={row.costingPurpose}
                     onValueChange={(value) => updateRow(row.key, { costingPurpose: value })}
@@ -186,7 +198,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                 </div>
 
                 <div className="space-y-1">
-                  <Label>Amount</Label>
+                  <Label className="md:hidden">Amount</Label>
                   <Input
                     type="number"
                     inputMode="decimal"
@@ -204,7 +216,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                 </div>
 
                 <div className="space-y-1">
-                  <Label>Cost Description</Label>
+                  <Label className="md:hidden">Cost Description</Label>
                   <Input
                     value={row.costDescription}
                     onChange={(event) =>
@@ -220,7 +232,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                 </div>
 
                 <div className="space-y-1">
-                  <Label>Remarks</Label>
+                  <Label className="md:hidden">Remarks</Label>
                   <Input
                     value={row.remarks}
                     onChange={(event) => updateRow(row.key, { remarks: event.target.value })}
@@ -244,7 +256,8 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
             </div>
           </div>
           )
-        })}
+          })}
+        </div>
       </div>
 
       <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
