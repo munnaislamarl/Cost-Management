@@ -151,11 +151,11 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
         {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
       </div>
 
-      <div className="space-y-2">
+      <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
         {rows.map((row, index) => {
           const errors = rowErrors[row.key] ?? {}
           return (
-            <div key={row.key} className="rounded-lg border border-border bg-muted/20 p-3">
+            <div key={row.key} className="p-3">
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold leading-none text-primary">
                   {index + 1}
