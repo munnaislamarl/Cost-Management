@@ -135,6 +135,16 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
           type="date"
           value={date}
           onChange={(event) => onDateChange(event.target.value)}
+          onClick={(event) => {
+            const input = event.currentTarget as HTMLInputElement & {
+              showPicker?: () => void
+            }
+            try {
+              input.showPicker?.()
+            } catch {
+              // picker already open or unsupported — ignore
+            }
+          }}
           disabled={submitting}
           aria-invalid={Boolean(dateError)}
         />
@@ -146,24 +156,12 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
           const errors = rowErrors[row.key] ?? {}
           return (
             <div key={row.key} className="rounded-lg border border-border bg-muted/20 p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold leading-none text-primary">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold leading-none text-primary">
                   {index + 1}
                 </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                  onClick={() => removeRow(row.key)}
-                  disabled={submitting || rows.length === 1}
-                  aria-label="Remove entry"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
 
-              <div className="grid gap-x-3 gap-y-2 md:grid-cols-4">
+                <div className="grid min-w-0 flex-1 gap-x-3 gap-y-2 md:grid-cols-4">
                 <div className="space-y-1">
                   <Label>Cost Category</Label>
                   <Select
@@ -231,7 +229,20 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                   />
                 </div>
               </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={() => removeRow(row.key)}
+                disabled={submitting || rows.length === 1}
+                aria-label="Remove entry"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
+          </div>
           )
         })}
       </div>
