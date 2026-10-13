@@ -1,5 +1,5 @@
-import { CheckCircle2, Info } from 'lucide-react'
-import { useState } from 'react'
+import { CheckCircle2, History, Info } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/common/PageHeader'
@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth'
 import { useRecords } from '@/hooks/useRecords'
 import { getErrorMessage } from '@/services/apiClient'
-import type { RecordInput } from '@/types'
-import { formatCurrency } from '@/utils/format'
+import type { CostRecord, RecordInput } from '@/types'
+import { sumCost } from '@/utils/analytics'
+import { formatCurrency, formatDate, parseDate, toInputDate } from '@/utils/format'
 
 interface LastBatch {
   count: number
@@ -17,26 +18,70 @@ interface LastBatch {
   at: string
 }
 
+interface PreviousDay {
+  date: string
+  entries: number
+  total: number
+  purposes: Array<[string, number]>
+}
+
 export function DataEntryPage() {
   const { user } = useAuth()
-  const { createMany } = useRecords()
+  const { records, createMany } = useRecords()
   const [submitting, setSubmitting] = useState(false)
   const [lastBatch, setLastBatch] = useState<LastBatch | null>(null)
+  const [entryDate, setEntryDate] = useState(() => toInputDate())
 
   const actor = user?.name ?? 'Unknown user'
 
-  async function handleSubmit(inputs: RecordInput[]): Promise<boolean> {
+  const previousDay = useMemo<PreviousDay | null>(() => {
+    if (!records.length || !entryDate) return null
+    const selected = parseDate(entryDate)
+    if (!selected) return null
+
+    const byDate = new Map<string, CostRecord[]>()
+    for (const record of records) {
+      const parsed = parseDate(record.date)
+      if (!parsed) continue
+      const key = toInputDate(parsed)
+      const list = byDate.get(key) ?? []
+      list.push(record)
+      byDate.set(key, list)
+    }
+
+    const selectedKey = toInputDate(selected)
+    const prior = Array.from(byDate.keys())
+      .filter((key) => key < selectedKey)
+      .sort()
+      .pop()
+    if (!prior) return null
+
+    const dayRecords = byDate.get(prior) ?? []
+    const purposeTotals = new Map<string, number>()
+    for (const record of dayRecords) {
+      const name = record.costingPurpose || 'Uncategorised'
+      purposeTotals.set(name, (purposeTotals.get(name) ?? 0) + (Number(record.costAmount) || 0))
+    }
+
+    return {
+      date: prior,
+      entries: dayRecords.length,
+      total: sumCost(dayRecords),
+      purposes: Array.from(purposeTotals.entries()).sort((a, b) => b[1] - a[1]),
+    }
+  }, [records, entryDate])
+
+  async function handleSubmit(input: RecordInput): Promise<boolean> {
     if (submitting) return false
     setSubmitting(true)
     try {
-      const created = await createMany(inputs, actor)
-      const total = inputs.reduce((sum, input) => sum + (Number(input.costAmount) || 0), 0)
-      toast.success(
-        created.length === 1
-          ? `Cost entry saved successfully`
-          : `${created.length} cost entries saved successfully`,
-      )
-      setLastBatch({ count: created.length, total, at: new Date().toISOString() })
+      await createMany([input], actor)
+      toast.success('Cost entry saved successfully')
+      setLastBatch({
+        count: 1,
+        total: Number(input.costAmount) || 0,
+        at: new Date().toISOString(),
+      })
       return true
     } catch (error) {
       toast.error(getErrorMessage(error))
@@ -50,21 +95,26 @@ export function DataEntryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Cost Entry"
-        description="Add one or many cost categories for the same date. Each row has its own description and remarks."
+        description="Enter one cost entry at a time — category, amount, description and remarks in a single row."
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader className="border-b border-border">
             <div>
-              <CardTitle>New Cost Entries</CardTitle>
+              <CardTitle>New Cost Entry</CardTitle>
               <CardDescription>
-                Use “Add another category” to enter multiple costs for the same date at once.
+                Fill in the row and save. Each entry is recorded with the selected date.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <MultiEntryForm submitting={submitting} onSubmit={handleSubmit} />
+            <MultiEntryForm
+              date={entryDate}
+              onDateChange={setEntryDate}
+              submitting={submitting}
+              onSubmit={handleSubmit}
+            />
           </CardContent>
         </Card>
 
@@ -89,19 +139,59 @@ export function DataEntryPage() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <History className="h-4 w-4 text-primary" />
+                Previous day
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {previousDay ? (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">
+                      {formatDate(previousDay.date)}
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {previousDay.entries} {previousDay.entries === 1 ? 'entry' : 'entries'}
+                    </span>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Total
+                    </p>
+                    <p className="text-sm font-semibold text-foreground tabular-nums">
+                      {formatCurrency(previousDay.total)}
+                    </p>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {previousDay.purposes.map(([name, amount]) => (
+                      <li key={name} className="flex items-center justify-between gap-2">
+                        <span className="truncate text-muted-foreground">{name}</span>
+                        <span className="shrink-0 text-foreground tabular-nums">
+                          {formatCurrency(amount)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-muted-foreground">No entries on the previous day yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
           {lastBatch ? (
             <Card className="border-success/30 bg-success/5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-success">
                   <CheckCircle2 className="h-4 w-4" />
-                  Last batch saved
+                  Last entry saved
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-sm text-muted-foreground">
-                <p>
-                  {lastBatch.count} {lastBatch.count === 1 ? 'entry' : 'entries'} ·{' '}
-                  {formatCurrency(lastBatch.total)}
-                </p>
+                <p>{formatCurrency(lastBatch.total)}</p>
                 <p>{new Date(lastBatch.at).toLocaleString()}</p>
               </CardContent>
             </Card>
@@ -111,8 +201,8 @@ export function DataEntryPage() {
             <CardContent className="flex gap-3 p-5 text-sm text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <p>
-                All rows in one save share the same date but keep separate category, amount,
-                description and remarks.
+                Each entry keeps its own date, category, amount, description and remarks. The
+                previous day's summary updates as you change the date above.
               </p>
             </CardContent>
           </Card>
