@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/common/PageHeader'
 import { MultiEntryForm } from '@/components/records/MultiEntryForm'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
 import { useRecords } from '@/hooks/useRecords'
 import { getErrorMessage } from '@/services/apiClient'
@@ -96,21 +96,12 @@ export function DataEntryPage() {
     <div className="space-y-4">
       <PageHeader
         title="Cost Entry"
-        description="Add one or many cost entries for the same date — then save them all at once."
+        description="Add one or more cost entries for the same date, then save them all at once."
       />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         <Card>
-          <CardHeader className="border-b border-border">
-            <div>
-              <CardTitle>New Cost Entry</CardTitle>
-              <CardDescription>
-                Pick a date, add one or more entry rows, then save. Every row is recorded
-                under the selected date.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4">
+          <CardContent className="p-5 sm:p-6">
             <MultiEntryForm
               date={entryDate}
               onDateChange={setEntryDate}
