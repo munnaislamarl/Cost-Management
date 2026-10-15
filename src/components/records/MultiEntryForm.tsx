@@ -235,7 +235,7 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
                     onChange={(event) =>
                       updateRow(row.key, { costDescription: event.target.value })
                     }
-                    placeholder="e.g. Mirzapur + Chips + Gari Vara"
+                    placeholder="e.g. Home Rent + Electricity Bill + Internet Bill & ETC"
                     disabled={submitting}
                     aria-invalid={Boolean(errors.costDescription)}
                   />
