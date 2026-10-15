@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 import { useCategories } from '@/hooks/useCategories'
 import type { RecordInput } from '@/types'
-import { toInputDate } from '@/utils/format'
+import { formatCurrency, toInputDate } from '@/utils/format'
 import { generateId } from '@/utils/id'
 
 interface RowState {
@@ -48,6 +48,8 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
   const [rows, setRows] = useState<RowState[]>(() => [newRow()])
   const [dateError, setDateError] = useState<string | null>(null)
   const [rowErrors, setRowErrors] = useState<Record<string, RowErrors>>({})
+
+  const localTotal = rows.reduce((sum, row) => sum + (Number(row.costAmount) || 0), 0)
 
   function updateRow(key: string, patch: Partial<RowState>) {
     setRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)))
@@ -126,29 +128,40 @@ export function MultiEntryForm({ date, onDateChange, submitting, onSubmit }: Ent
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-      <div className="max-w-[260px] space-y-1.5">
-        <Label htmlFor="entry-date">
-          Date <span className="text-destructive">*</span>
-        </Label>
-        <Input
-          id="entry-date"
-          type="date"
-          value={date}
-          onChange={(event) => onDateChange(event.target.value)}
-          onClick={(event) => {
-            const input = event.currentTarget as HTMLInputElement & {
-              showPicker?: () => void
-            }
-            try {
-              input.showPicker?.()
-            } catch {
-              // picker already open or unsupported — ignore
-            }
-          }}
-          disabled={submitting}
-          aria-invalid={Boolean(dateError)}
-        />
-        {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="w-full max-w-[260px] space-y-1.5">
+          <Label htmlFor="entry-date">
+            Date <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="entry-date"
+            type="date"
+            value={date}
+            onChange={(event) => onDateChange(event.target.value)}
+            onClick={(event) => {
+              const input = event.currentTarget as HTMLInputElement & {
+                showPicker?: () => void
+              }
+              try {
+                input.showPicker?.()
+              } catch {
+                // picker already open or unsupported — ignore
+              }
+            }}
+            disabled={submitting}
+            aria-invalid={Boolean(dateError)}
+          />
+          {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
+        </div>
+
+        <div className="rounded-lg border border-border bg-muted/50 px-4 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Total Amount
+          </p>
+          <p className="text-sm font-semibold text-primary tabular-nums">
+            {formatCurrency(localTotal)}
+          </p>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border">
